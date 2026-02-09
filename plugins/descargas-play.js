@@ -21,6 +21,15 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
+    name: 'Sylphy-API', 
+    url: `https://sylphy.xyz/download/ytmp3?url=`,
+    params: '&api_key=Stellar',
+    getAudioUrl: (data) => data?.result?.download_url || data?.url,
+    getTitle: (data) => data?.result?.title || data?.title,
+    getThumb: (data) => data?.result?.thumbnail || data?.thumbnail,
+    getDuration: (data) => data?.result?.duration || data?.duration
+  },
+  { 
     name: 'Stellar-GataDios', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
     params: '&key=GataDios',
@@ -80,7 +89,8 @@ async function getAudioFromApis(url, controller) {
 
       if (response.ok) {
         const data = await response.json();
-        if (data?.status !== true && data?.status !== 'true') continue;
+        // Verificación flexible de status para diferentes APIs
+        if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
@@ -94,7 +104,8 @@ async function getAudioFromApis(url, controller) {
         }
       }
     } catch (e) {
-      // Intenta con la siguiente API
+      console.log(`Error en API ${api.name}:`, e.message);
+      continue;
     }
   }
   return { success: false };
@@ -117,7 +128,6 @@ const handler = async (m, { conn, args, command }) => {
   try {
     await m.react('🕒');
 
-    // Timeout de búsqueda extendido a 2 minutos para procesos pesados
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 120000);
 
@@ -137,7 +147,6 @@ const handler = async (m, { conn, args, command }) => {
     const fileName = `${title.replace(/[^\w\s-]/g, '')}.mp3`.substring(0, 50);
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     
-    // Descarga sin señal de aborto agresiva para permitir archivos grandes
     const audioResponse = await fetch(audioUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://youtube.com/' }
     });
@@ -155,21 +164,18 @@ const handler = async (m, { conn, args, command }) => {
 
     const caption = `🎵 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
 
-    // Enviar información
     if (thumbnail) {
       await conn.sendMessage(m.chat, { image: { url: thumbnail }, caption }, { quoted: m });
     } else {
       await m.reply(caption);
     }
 
-    // Enviar el Audio
     await conn.sendMessage(m.chat, {
       audio: fs.readFileSync(dest),
       mimetype: 'audio/mpeg',
       fileName: `${title}.mp3`,
     }, { quoted: m });
 
-    // Limpieza
     if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
 
