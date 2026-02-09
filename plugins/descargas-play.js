@@ -30,15 +30,6 @@ const APIS = [
     getDuration: (data) => data?.result?.duration || data?.duration
   },
   { 
-    name: 'Stellar-GataDios', 
-    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
-    params: '&key=GataDios',
-    getAudioUrl: (data) => data?.data?.download,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration || data?.data?.timestamp
-  },
-  { 
     name: 'Stellar-v2-Yuki', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
     params: '&key=YukiWaBot',
