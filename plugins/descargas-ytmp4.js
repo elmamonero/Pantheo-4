@@ -9,7 +9,7 @@ const APIS = [
   {
     name: 'Sylphy-API',
     url: `https://sylphy.xyz/download/ytmp4?url=`,
-    params: '&q=720p&api_key=sylphy-KthGG9y',
+    params: '&q=480p&api_key=sylphy-KthGG9y',
     getVideoUrl: (data) => data?.result?.dl_url, 
     getTitle: (data) => data?.result?.title,
     getThumb: (data) => data?.result?.thumbnail || null, // No viene en tu estructura, se usará fallback
