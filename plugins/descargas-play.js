@@ -76,6 +76,7 @@ const APIS = [
 async function getAudioFromApis(url, controller) {
   for (const api of APIS) {
     try {
+      console.log(`[DEBUG] Intentando con API: ${api.name}...`);
       const encodedUrl = encodeURIComponent(url);
       const apiUrl = `${api.url}${encodedUrl}${api.params || ''}`;
       
@@ -90,16 +91,15 @@ async function getAudioFromApis(url, controller) {
       if (response.ok) {
         const data = await response.json();
         
-        // Verificación de status
-        if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
+        // Verificación de status flexible
+        if (data?.status !== true && data?.status !== 'true' && !data?.result && !data?.url) {
+          console.log(`[WARN] API ${api.name} devolvió un estado inválido o sin datos.`);
+          continue;
+        }
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
-          // Log para verificar si Sylphy es la que responde
-          if (api.name === 'Sylphy-API') {
-            console.log(`✅ [LOG] La primera API (Sylphy) respondió con éxito para: ${url}`);
-          }
-
+          console.log(`✅ [SUCCESS] ¡Éxito con ${api.name}! URL de descarga obtenida.`);
           return {
             success: true,
             title: api.getTitle(data) || 'Audio de YouTube',
@@ -108,9 +108,11 @@ async function getAudioFromApis(url, controller) {
             duration: formatDuration(api.getDuration(data))
           };
         }
+      } else {
+        console.log(`[ERROR] API ${api.name} respondió con status: ${response.status}`);
       }
     } catch (e) {
-      console.log(`❌ [ERROR] API ${api.name} falló:`, e.message);
+      console.log(`❌ [CRITICAL] Error en API ${api.name}: ${e.message}`);
       continue;
     }
   }
@@ -125,6 +127,7 @@ const handler = async (m, { conn, args, command }) => {
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
 
   if (!isUrl) {
+    console.log(`[INFO] Buscando en YouTube: "${args.join(' ')}"`);
     const searchResults = await yts(args.join(' '));
     if (!searchResults.videos.length) return m.reply('No se encontraron resultados');
     searchData = searchResults.videos[0];
@@ -142,6 +145,7 @@ const handler = async (m, { conn, args, command }) => {
 
     if (!apiResult.success) {
       await m.react('✖️');
+      console.log(`[FATAL] No se pudo obtener audio de ninguna de las ${APIS.length} APIs.`);
       return m.reply(`*✖️ Error:* No se pudo obtener el audio con ninguna API disponible.`);
     }
 
@@ -152,6 +156,7 @@ const handler = async (m, { conn, args, command }) => {
     const { title, thumbnail, url: audioUrl } = apiResult;
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     
+    console.log(`[INFO] Descargando audio desde la URL de la API...`);
     const audioResponse = await fetch(audioUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://youtube.com/' }
     });
@@ -166,6 +171,8 @@ const handler = async (m, { conn, args, command }) => {
     fs.writeFileSync(dest, Buffer.from(arrayBuffer));
     const stats = fs.statSync(dest);
     const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+
+    console.log(`[INFO] Envío de audio preparado: ${title} (${sizeMB}MB)`);
 
     const caption = `🎵 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
 
@@ -183,10 +190,11 @@ const handler = async (m, { conn, args, command }) => {
 
     if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
+    console.log(`[INFO] Tarea completada con éxito.`);
 
   } catch (error) {
     await m.react('✖️');
-    console.error(error);
+    console.error(`[HANDLER ERROR]`, error);
     m.reply(`⚠️ *Error:* ${error.message}`);
   }
 };
