@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
-const MAX_SIZE_MB = 100;
+const MAX_SIZE_MB = 150;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const APIS = [
@@ -12,13 +12,13 @@ const APIS = [
     params: '&q=480p&api_key=sylphy-KthGG9y',
     getVideoUrl: (data) => data?.result?.dl_url, 
     getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail || null, // No viene en tu estructura, se usará fallback
-    getDuration: (data) => data?.result?.duration || null
+    getThumb: (data) => data?.result?.thumbnail || null,
+    getDuration: (data) => data?.result?.duration || null // La API no lo envía según tu JSON
   }
 ];
 
 function formatDuration(seconds) {
-  if (!seconds || isNaN(seconds)) return 'Desconocido';
+  if (!seconds || isNaN(seconds)) return null;
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -42,17 +42,12 @@ async function getVideoFromApis(url, controller) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(`🎥 [YTMP4] ${api.name} status: ${data?.status}`);
         
-        if (data?.status !== true && data?.status !== 'true') {
-          console.log(`❌ [YTMP4] ${api.name} status inválido`);
-          continue;
-        }
+        if (data?.status !== true && data?.status !== 'true') continue;
         
         const videoUrl = api.getVideoUrl(data);
         
         if (videoUrl) {
-          console.log(`✅ [YTMP4] ${api.name} exitosa: ${api.getTitle(data)}`);
           return {
             success: true,
             api: api.name,
@@ -61,8 +56,6 @@ async function getVideoFromApis(url, controller) {
             url: videoUrl,
             duration: formatDuration(api.getDuration(data))
           };
-        } else {
-          console.log(`❌ [YTMP4] ${api.name}: No video URL`);
         }
       }
     } catch (e) {
@@ -77,13 +70,17 @@ const handler = async (m, { conn, args, command }) => {
 
   let url = args[0];
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
-  let searchThumbnail = '';
+  let searchData = {};
 
-  if (!isUrl) {
-    const searchResults = await yts(args.join(' '));
-    if (!searchResults.videos.length) return m.reply('No se encontraron resultados.');
-    url = searchResults.videos[0].url;
-    searchThumbnail = searchResults.videos[0].thumbnail; // Guardamos thumb de la búsqueda
+  // Buscamos siempre info en yts para tener duración y thumbnail de respaldo
+  try {
+    const searchResults = await yts(isUrl ? url : args.join(' '));
+    if (searchResults.videos.length > 0) {
+      searchData = searchResults.videos[0];
+      if (!isUrl) url = searchData.url;
+    }
+  } catch (e) {
+    console.log("Error en búsqueda yts");
   }
 
   try {
@@ -97,11 +94,15 @@ const handler = async (m, { conn, args, command }) => {
 
     if (!apiResult.success) {
       await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo procesar el video con la API.\n\n*Pantheon Bot*`);
+      return m.reply(`*✖️ Error:* No se pudo procesar el video.\n\n*Pantheon Bot*`);
     }
 
-    const { title, url: videoUrl, duration } = apiResult;
-    const finalThumb = apiResult.thumbnail || searchThumbnail;
+    const { title, url: videoUrl } = apiResult;
+    
+    // PRIORIDAD DE DATOS: API -> Búsqueda Manual -> "Desconocido"
+    const finalDuration = apiResult.duration || searchData.timestamp || 'Desconocido';
+    const finalThumb = apiResult.thumbnail || searchData.thumbnail || null;
+    
     const fileName = `${title.replace(/[^\w\s-]/g, '')}.mp4`.replace(/\s+/g, '_').substring(0, 50);
     
     const videoResponse = await fetch(videoUrl, { signal: AbortSignal.timeout(60000) });
@@ -115,16 +116,14 @@ const handler = async (m, { conn, args, command }) => {
     }
 
     const buffer = Buffer.from(arrayBuffer);
-    const caption = `🎥 *${title}*\n⏱️ ${duration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
+    const caption = `🎥 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
 
-    // Envío con imagen si existe
     if (finalThumb) {
       await conn.sendMessage(m.chat, { image: { url: finalThumb }, caption }, { quoted: m });
     } else {
       await m.reply(caption);
     }
 
-    // Envío del video
     await conn.sendMessage(m.chat, {
       video: buffer,
       mimetype: 'video/mp4',
@@ -134,7 +133,6 @@ const handler = async (m, { conn, args, command }) => {
     await m.react('✅');
 
   } catch (error) {
-    console.log(`💥 [YTMP4] Error: ${error.message}`);
     await m.react('✖️');
     if (error.message.includes('pesado')) return m.reply(`📏 ${error.message}`);
     m.reply('⚠️ Error al descargar el video.');
