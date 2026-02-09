@@ -6,7 +6,7 @@ import yts from 'yt-search';
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
-// Función para formatear duración (flexible para lo que envíe la API)
+// Función para formatear duración
 function formatDuration(duration) {
   if (!duration) return 'Desconocido';
   if (typeof duration === 'string' && duration.includes(':')) return duration;
@@ -20,15 +20,6 @@ function formatDuration(duration) {
 }
 
 const APIS = [
-  { 
-    name: 'Sylphy-API', 
-    url: `https://sylphy.xyz/download/ytmp3?url=`,
-    params: '&api_key=Stellar',
-    getAudioUrl: (data) => data?.result?.dl_url,
-    getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail, 
-    getDuration: (data) => data?.result?.duration
-  },
   { 
     name: 'Stellar-GataDios', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
@@ -62,6 +53,16 @@ const APIS = [
     getTitle: (data) => data?.result?.title,
     getThumb: (data) => data?.result?.thumbnail || data?.result?.image,
     getDuration: (data) => data?.result?.duration?.timestamp || data?.result?.timestamp
+  },
+  { 
+    // AHORA EN QUINTA POSICIÓN
+    name: 'Sylphy-API', 
+    url: `https://sylphy.xyz/download/ytmp3?url=`,
+    params: '&api_key=Stellar',
+    getAudioUrl: (data) => data?.result?.dl_url,
+    getTitle: (data) => data?.result?.title,
+    getThumb: (data) => data?.result?.thumbnail, 
+    getDuration: (data) => data?.result?.duration
   },
   { 
     name: 'Adonix', 
@@ -123,14 +124,11 @@ const handler = async (m, { conn, args, command }) => {
   let searchData = null;
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
 
-  // Siempre realizamos una búsqueda si es necesario para obtener metadatos (como la imagen)
-  if (!isUrl || isUrl) {
-    const query = isUrl ? url : args.join(' ');
-    const searchResults = await yts(query);
-    if (searchResults.videos.length) {
-      searchData = searchResults.videos[0];
-      if (!isUrl) url = searchData.url;
-    }
+  const query = isUrl ? url : args.join(' ');
+  const searchResults = await yts(query);
+  if (searchResults.videos.length) {
+    searchData = searchResults.videos[0];
+    if (!isUrl) url = searchData.url;
   }
 
   if (!url) return m.reply('No se encontraron resultados');
@@ -146,25 +144,23 @@ const handler = async (m, { conn, args, command }) => {
 
     if (!apiResult.success) {
       await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo obtener el audio.`);
+      return m.reply(`*✖️ Error:* No se pudo obtener el audio con las APIs actuales.`);
     }
 
     const { title, thumbnail, url: audioUrl } = apiResult;
-    
-    // PRIORIDAD DE IMAGEN: 1. API | 2. yt-search
     const finalThumbnail = thumbnail || searchData?.thumbnail || searchData?.image;
-    
     const finalDuration = apiResult.duration === 'Desconocido' && searchData 
       ? searchData.timestamp 
       : apiResult.duration;
     
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     
+    console.log(`[INFO] Descargando de la API: ${apiResult.url}`);
     const audioResponse = await fetch(audioUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://youtube.com/' }
     });
 
-    if (!audioResponse.ok) throw new Error('El servidor de descarga no respondió correctamente.');
+    if (!audioResponse.ok) throw new Error('Error al descargar el archivo.');
 
     const arrayBuffer = await audioResponse.arrayBuffer();
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
@@ -177,7 +173,6 @@ const handler = async (m, { conn, args, command }) => {
 
     const caption = `🎵 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
 
-    // Usar la miniatura recuperada de la búsqueda si la API no la dio
     if (finalThumbnail) {
       await conn.sendMessage(m.chat, { image: { url: finalThumbnail }, caption }, { quoted: m });
     } else {
