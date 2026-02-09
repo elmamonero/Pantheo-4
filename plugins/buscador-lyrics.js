@@ -1,37 +1,55 @@
 /* Lyrics By WillZek 
-- Free Codes Titan 
-- https://github.com/WillZek
-- https://whatsapp.com/channel/0029ValMlRS6buMFL9d0iQ0S 
+- Adaptado para Sylphy API por Gemini
 */
 
 import fetch from 'node-fetch';
+import yts from 'yt-search';
 
 let handler = async(m, { conn, text, usedPrefix, command }) => {
 
-if (!text) return m.reply(m.chat, '*[ 🔍 ] Ingrese el nombre de una canción para buscar la letra.*', m);
+  if (!text) return m.reply('*[ 🔍 ] Ingrese el nombre de una canción para buscar la letra.*');
 
-try {
-let api = `https://archive-ui.tanakadomp.biz.id/search/lirik?q=${text}`;
+  try {
+    // Log para ver que estamos consultando la nueva API
+    console.log(`[INFO] Buscando letra en Sylphy para: ${text}`);
 
-let responde = await fetch(api);
-let json = await responde.json();
-let crow = json.result;
+    const api = `https://sylphy.xyz/search/lyrics?title=${encodeURIComponent(text)}&api_key=Stellar`;
+    
+    let responde = await fetch(api);
+    let json = await responde.json();
 
-let txt = `*Nombre:* ${crow.title}\n*Letra:* ${crow.lyrics}`;
+    if (!json.status || !json.result) {
+      return m.reply('*[ ❌ ] No se encontró la letra de esta canción.*');
+    }
 
-let img = crow.thumb;
+    let crow = json.result;
 
-conn.sendMessage(m.chat, { image: { url: img }, caption: txt }, { quoted: fkontak });
+    // Buscamos la imagen de la canción en YouTube ya que la API de letras no da imagen
+    let res = await yts(text);
+    let thumb = res.videos[0]?.thumbnail || 'https://telegra.ph/file/243e111fef951ecc20f4c.png';
 
-} catch (e) {
-console.log(e)
-m.reply('*[ ❌ ] No se pudo obtener la letra De su canción*');
-m.reply('❌');
- }
+    let txt = `🎵 *Título:* ${crow.title}\n`;
+    txt += `👤 *Artista:* ${crow.artist || 'Desconocido'}\n`;
+    txt += `💿 *Álbum:* ${crow.album || 'Desconocido'}\n`;
+    txt += `⏱️ *Duración:* ${crow.duration || 'Desconocida'}\n\n`;
+    txt += `📜 *Letra:*\n\n${crow.lyrics}`;
+
+    // Enviamos el mensaje con la imagen encontrada y la letra
+    await conn.sendMessage(m.chat, { 
+      image: { url: thumb }, 
+      caption: txt 
+    }, { quoted: m });
+
+    console.log(`[SUCCESS] Letra de "${crow.title}" enviada con éxito.`);
+
+  } catch (e) {
+    console.log(`[ERROR] Error en el comando letras:`, e);
+    m.reply('*[ ❌ ] Ocurrió un error al obtener la letra de su canción.*');
+  }
 };
 
 handler.help = ['lyrics'];
-handler.tag = ['buscador'];
+handler.tags = ['buscador'];
 handler.command = ['letra', 'lyric', 'lyrics', 'lirik'];
 
 export default handler;
