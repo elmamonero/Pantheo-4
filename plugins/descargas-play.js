@@ -24,10 +24,20 @@ const APIS = [
     name: 'Sylphy-API', 
     url: `https://sylphy.xyz/download/ytmp3?url=`,
     params: '&api_key=Stellar',
-    getAudioUrl: (data) => data?.result?.download_url || data?.url,
-    getTitle: (data) => data?.result?.title || data?.title,
-    getThumb: (data) => data?.result?.thumbnail || data?.thumbnail,
-    getDuration: (data) => data?.result?.duration || data?.duration
+    // Ajustado a la estructura: result.dl_url y result.title
+    getAudioUrl: (data) => data?.result?.dl_url,
+    getTitle: (data) => data?.result?.title,
+    getThumb: (data) => data?.result?.thumbnail, // Por si acaso lo agregan luego
+    getDuration: (data) => data?.result?.duration
+  },
+  { 
+    name: 'Stellar-GataDios', 
+    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
+    params: '&key=GataDios',
+    getAudioUrl: (data) => data?.data?.download,
+    getTitle: (data) => data?.data?.title,
+    getThumb: (data) => data?.data?.thumbnail,
+    getDuration: (data) => data?.data?.duration || data?.data?.timestamp
   },
   { 
     name: 'Stellar-v2-Yuki', 
@@ -82,15 +92,15 @@ async function getAudioFromApis(url, controller) {
       if (response.ok) {
         const data = await response.json();
         
-        // Verificación de status flexible
-        if (data?.status !== true && data?.status !== 'true' && !data?.result && !data?.url) {
-          console.log(`[WARN] API ${api.name} devolvió un estado inválido o sin datos.`);
+        // Validamos si el status es true según tu estructura
+        if (data?.status !== true && data?.status !== 'true') {
+          console.log(`[WARN] API ${api.name} falló en el estado:`, data?.status);
           continue;
         }
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
-          console.log(`✅ [SUCCESS] ¡Éxito con ${api.name}! URL de descarga obtenida.`);
+          console.log(`✅ [SUCCESS] Respuesta válida de ${api.name}`);
           return {
             success: true,
             title: api.getTitle(data) || 'Audio de YouTube',
@@ -100,10 +110,10 @@ async function getAudioFromApis(url, controller) {
           };
         }
       } else {
-        console.log(`[ERROR] API ${api.name} respondió con status: ${response.status}`);
+        console.log(`[ERROR] ${api.name} respondió con status: ${response.status}`);
       }
     } catch (e) {
-      console.log(`❌ [CRITICAL] Error en API ${api.name}: ${e.message}`);
+      console.log(`❌ [CRITICAL] Error en ${api.name}: ${e.message}`);
       continue;
     }
   }
@@ -136,34 +146,34 @@ const handler = async (m, { conn, args, command }) => {
 
     if (!apiResult.success) {
       await m.react('✖️');
-      console.log(`[FATAL] No se pudo obtener audio de ninguna de las ${APIS.length} APIs.`);
-      return m.reply(`*✖️ Error:* No se pudo obtener el audio con ninguna API disponible.`);
+      console.log(`[FATAL] Ninguna API pudo procesar la solicitud.`);
+      return m.reply(`*✖️ Error:* No se pudo obtener el audio. Intenta con otro enlace.`);
     }
 
+    const { title, thumbnail, url: audioUrl } = apiResult;
     const finalDuration = apiResult.duration === 'Desconocido' && searchData 
       ? searchData.timestamp 
       : apiResult.duration;
-
-    const { title, thumbnail, url: audioUrl } = apiResult;
+    
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     
-    console.log(`[INFO] Descargando audio desde la URL de la API...`);
+    console.log(`[INFO] Descargando archivo desde el servidor de la API...`);
     const audioResponse = await fetch(audioUrl, {
       headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://youtube.com/' }
     });
 
-    if (!audioResponse.ok) throw new Error('Error al descargar el archivo de la API.');
+    if (!audioResponse.ok) throw new Error('El servidor de descarga no respondió correctamente.');
 
     const arrayBuffer = await audioResponse.arrayBuffer();
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
-      throw new Error(`El archivo es demasiado grande (${(arrayBuffer.byteLength/1024/1024).toFixed(1)}MB).`);
+      throw new Error(`Archivo demasiado grande: ${(arrayBuffer.byteLength/1024/1024).toFixed(1)}MB.`);
     }
 
     fs.writeFileSync(dest, Buffer.from(arrayBuffer));
     const stats = fs.statSync(dest);
     const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
 
-    console.log(`[INFO] Envío de audio preparado: ${title} (${sizeMB}MB)`);
+    console.log(`[INFO] Enviando: ${title} (${sizeMB}MB)`);
 
     const caption = `🎵 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
 
@@ -181,7 +191,6 @@ const handler = async (m, { conn, args, command }) => {
 
     if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
-    console.log(`[INFO] Tarea completada con éxito.`);
 
   } catch (error) {
     await m.react('✖️');
