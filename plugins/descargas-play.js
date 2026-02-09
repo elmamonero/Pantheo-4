@@ -89,11 +89,17 @@ async function getAudioFromApis(url, controller) {
 
       if (response.ok) {
         const data = await response.json();
-        // Verificación flexible de status para diferentes APIs
+        
+        // Verificación de status
         if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
+          // Log para verificar si Sylphy es la que responde
+          if (api.name === 'Sylphy-API') {
+            console.log(`✅ [LOG] La primera API (Sylphy) respondió con éxito para: ${url}`);
+          }
+
           return {
             success: true,
             title: api.getTitle(data) || 'Audio de YouTube',
@@ -104,7 +110,7 @@ async function getAudioFromApis(url, controller) {
         }
       }
     } catch (e) {
-      console.log(`Error en API ${api.name}:`, e.message);
+      console.log(`❌ [ERROR] API ${api.name} falló:`, e.message);
       continue;
     }
   }
@@ -136,7 +142,7 @@ const handler = async (m, { conn, args, command }) => {
 
     if (!apiResult.success) {
       await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo obtener el audio. Posiblemente el video es demasiado largo para las APIs actuales.`);
+      return m.reply(`*✖️ Error:* No se pudo obtener el audio con ninguna API disponible.`);
     }
 
     const finalDuration = apiResult.duration === 'Desconocido' && searchData 
@@ -144,7 +150,6 @@ const handler = async (m, { conn, args, command }) => {
       : apiResult.duration;
 
     const { title, thumbnail, url: audioUrl } = apiResult;
-    const fileName = `${title.replace(/[^\w\s-]/g, '')}.mp3`.substring(0, 50);
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     
     const audioResponse = await fetch(audioUrl, {
@@ -155,7 +160,7 @@ const handler = async (m, { conn, args, command }) => {
 
     const arrayBuffer = await audioResponse.arrayBuffer();
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
-      throw new Error(`El archivo es demasiado grande (${(arrayBuffer.byteLength/1024/1024).toFixed(1)}MB). El límite es ${MAX_SIZE_MB}MB.`);
+      throw new Error(`El archivo es demasiado grande (${(arrayBuffer.byteLength/1024/1024).toFixed(1)}MB).`);
     }
 
     fs.writeFileSync(dest, Buffer.from(arrayBuffer));
