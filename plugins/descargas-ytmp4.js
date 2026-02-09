@@ -7,21 +7,13 @@ const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const APIS = [
   {
-    name: 'Stellar-YTMP4',
-    url: `https://api.stellarwa.xyz/dl/ytmp4?url=`,
-    params: '&quality=720&key=GataDios',
-    getVideoUrl: (data) => data?.data?.download,  // ← FIX: data.download NO result.download
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration
-  },
-  {
-    name: 'Adonix-Video',
-    url: `https://api-adonix.ultraplus.click/download/ytvideo?apikey=AdonixKey2lph3k2117&url=`,
-    getVideoUrl: (data) => data?.data?.url,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration
+    name: 'Sylphy-API',
+    url: `https://sylphy.xyz/download/ytmp4?url=`,
+    params: '&q=720p&api_key=sylphy-KthGG9y',
+    getVideoUrl: (data) => data?.result?.download_url || data?.download, 
+    getTitle: (data) => data?.result?.title || data?.title,
+    getThumb: (data) => data?.result?.thumbnail || data?.thumbnail,
+    getDuration: (data) => data?.result?.duration || data?.duration
   }
 ];
 
@@ -44,8 +36,7 @@ async function getVideoFromApis(url, controller) {
         signal: controller.signal,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'application/json',
-          'Referer': 'https://api.stellarwa.xyz/'
+          'Accept': 'application/json'
         }
       });
 
@@ -53,7 +44,8 @@ async function getVideoFromApis(url, controller) {
         const data = await response.json();
         console.log(`🎥 [YTMP4] ${api.name} status: ${data?.status}`);
         
-        if (data?.status !== true && data?.status !== 'true') {
+        // Verificamos si la respuesta es exitosa (algunas APIs usan status: 200 o true)
+        if (data?.status !== true && data?.status !== 'true' && data?.status !== 200) {
           console.log(`❌ [YTMP4] ${api.name} status inválido`);
           continue;
         }
@@ -88,7 +80,7 @@ const handler = async (m, { conn, args, command }) => {
   if (!args[0]) return m.reply('Por favor, ingresa un nombre o URL de un video de YouTube');
 
   let url = args[0];
-  const isUrl = /(youtube\\.com|youtu\\.be)/.test(url);
+  const isUrl = /(youtube\.com|youtu\.be)/.test(url);
 
   if (!isUrl) {
     console.log(`🔍 [YTMP4] Buscando: ${args.join(' ')}`);
@@ -106,7 +98,7 @@ const handler = async (m, { conn, args, command }) => {
     console.log(`⬇️ [YTMP4] Iniciando descarga...`);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s para APIs externas
 
     const apiResult = await getVideoFromApis(url, controller);
     clearTimeout(timeoutId);
@@ -114,96 +106,69 @@ const handler = async (m, { conn, args, command }) => {
     if (!apiResult.success) {
       console.log(`❌ [YTMP4] Todas las APIs fallaron`);
       await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo obtener el video.\n\n*Pantheon Bot*`);
+      return m.reply(`*✖️ Error:* No se pudo obtener el video con la API actual.\n\n*Pantheon Bot*`);
     }
 
     const { title, thumbnail, url: videoUrl, duration } = apiResult;
     const fileName = `${title.replace(/[^\w\s-]/g, '')}.mp4`.replace(/\s+/g, '_').substring(0, 50);
     
-    console.log(`📹 [YTMP4] Enviando: ${title} (${duration})`);
+    console.log(`📹 [YTMP4] Procesando: ${title} (${duration})`);
 
-    const dest = path.join('/tmp', `${Date.now()}_${fileName}`);
-    
-    console.log(`⬇️ [YTMP4] Descargando video desde: ${videoUrl.substring(0, 80)}...`);
+    // Descarga y validación de tamaño
     const videoResponse = await fetch(videoUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://youtube.com/',
       },
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(60000)
     });
 
-    if (!videoResponse.ok) {
-      console.log(`❌ [YTMP4] Error descarga HTTP: ${videoResponse.status}`);
-      throw new Error(`Error descarga: ${videoResponse.status}`);
-    }
+    if (!videoResponse.ok) throw new Error(`Error descarga: ${videoResponse.status}`);
 
     const arrayBuffer = await videoResponse.arrayBuffer();
     const sizeMB = (arrayBuffer.byteLength/1024/1024).toFixed(1);
     
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
-      console.log(`📏 [YTMP4] Archivo muy grande: ${sizeMB}MB`);
       throw new Error(`Archivo muy pesado (${sizeMB}MB). Máximo ${MAX_SIZE_MB}MB`);
     }
 
-    fs.writeFileSync(dest, Buffer.from(arrayBuffer));
-    const stats = fs.statSync(dest);
-    console.log(`💾 [YTMP4] Archivo guardado: ${sizeMB}MB`);
-
-    const sendTextMessage = (title, duration, size) => {
-      return conn.sendMessage(m.chat, {
-        text: `🎥 *${title}*\n⏱️ ${duration}\n💾 ${(size/1024/1024).toFixed(1)}MB\n\n*Pantheon Bot*`,
-      }, { quoted: m });
-    };
-
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Envío de información (Thumbnail + Texto)
     if (thumbnail) {
       try {
-        console.log(`🖼️ [YTMP4] Enviando thumbnail...`);
-        const thumbResponse = await fetch(thumbnail, { signal: AbortSignal.timeout(5000) });
+        const thumbResponse = await fetch(thumbnail);
         const thumbBuffer = await thumbResponse.arrayBuffer();
         await conn.sendMessage(m.chat, {
           image: Buffer.from(thumbBuffer),
-          caption: `🎥 *${title}*\n⏱️ ${duration}\n💾 ${(stats.size/1024/1024).toFixed(1)}MB\n\n*Pantheon Bot*`,
+          caption: `🎥 *${title}*\n⏱️ ${duration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`,
         }, { quoted: m });
-      } catch (e) {
-        console.log(`❌ [YTMP4] Thumbnail falló`);
-        await sendTextMessage(title, duration, stats.size);
+      } catch {
+        await conn.sendMessage(m.chat, { text: `🎥 *${title}*\n⏱️ ${duration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*` }, { quoted: m });
       }
-    } else {
-      await sendTextMessage(title, duration, stats.size);
     }
 
-    console.log(`📤 [YTMP4] Enviando video...`);
+    console.log(`📤 [YTMP4] Enviando archivo de video...`);
     await conn.sendMessage(m.chat, {
-      video: { url: videoUrl },
+      video: buffer,
       mimetype: 'video/mp4',
-      fileName,
+      fileName: `${fileName}.mp4`,
     }, { quoted: m });
 
-    if (fs.existsSync(dest)) fs.unlinkSync(dest);
-    
     await m.react('✅');
-    console.log(`✅ [YTMP4] Completado: ${title}`);
 
   } catch (error) {
     console.log(`💥 [YTMP4] Error final: ${error.message}`);
-    
-    if (error.name === 'AbortError') {
-      await m.react('⏰');
-      return m.reply(`⏰ *Timeout* - Video muy pesado (>${MAX_SIZE_MB}MB)\n\n*Pantheon Bot*`);
-    }
-    
-    if (error.message.includes('muy pesado')) {
-      await m.react('📏');
-      return m.reply(`${error.message}\n\n*Pantheon Bot*`);
-    }
-    
     await m.react('✖️');
-    m.reply('⚠️ Falló la descarga. Prueba con otro video.\n\n*Pantheon Bot*');
+    
+    if (error.name === 'AbortError') return m.reply(`⏰ *Timeout* - La conexión tardó demasiado.\n\n*Pantheon Bot*`);
+    if (error.message.includes('muy pesado')) return m.reply(`📏 ${error.message}\n\n*Pantheon Bot*`);
+    
+    m.reply('⚠️ Ocurrió un error al procesar el video. Intenta de nuevo más tarde.\n\n*Pantheon Bot*');
   }
 };
 
 handler.help = ['ytmp4 <nombre|URL>'];
 handler.command = ['ytmp4', 'video'];
 handler.tags = ['descargas'];
+
 export default handler;
