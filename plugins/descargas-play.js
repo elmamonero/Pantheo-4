@@ -20,6 +20,15 @@ function formatDuration(duration) {
 }
 
 const APIS = [
+  
+  { 
+    name: 'Adonix', 
+    url: `https://api-adonix.ultraplus.click/download/ytaudio?apikey=AdonixKey2lph3k2117&url=`,
+    getAudioUrl: (data) => data?.data?.url,
+    getTitle: (data) => data?.data?.title,
+    getThumb: (data) => data?.data?.thumbnail,
+    getDuration: (data) => data?.data?.duration
+  },
   { 
     name: 'Stellar-v2-Yuki', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
@@ -54,14 +63,6 @@ const APIS = [
     getTitle: (data) => data?.result?.title,
     getThumb: (data) => data?.result?.thumbnail, 
     getDuration: (data) => data?.result?.duration
-  },
-  { 
-    name: 'Adonix', 
-    url: `https://api-adonix.ultraplus.click/download/ytaudio?apikey=AdonixKey2lph3k2117&url=`,
-    getAudioUrl: (data) => data?.data?.url,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration
   }
 ];
 
