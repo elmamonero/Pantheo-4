@@ -20,7 +20,15 @@ function formatDuration(duration) {
 }
 
 const APIS = [
-  
+  { 
+    name: 'Sylphy-API', 
+    url: `https://sylphy.xyz/download/v2/ytmp3?url=`,
+    params: '&api_key=Stellar',
+    getAudioUrl: (data) => data?.result?.dl_url,
+    getTitle: (data) => data?.result?.title,
+    getThumb: (data) => data?.result?.thumbnail, 
+    getDuration: (data) => data?.result?.duration
+  },
   { 
     name: 'Adonix', 
     url: `https://api-adonix.ultraplus.click/download/ytaudio?apikey=AdonixKey2lph3k2117&url=`,
@@ -53,16 +61,6 @@ const APIS = [
     getTitle: (data) => data?.result?.title,
     getThumb: (data) => data?.result?.thumbnail || data?.result?.image,
     getDuration: (data) => data?.result?.duration?.timestamp || data?.result?.timestamp
-  },
-  { 
-    // AHORA EN QUINTA POSICIÓN
-    name: 'Sylphy-API', 
-    url: `https://sylphy.xyz/download/v2/ytmp3?url=`,
-    params: '&api_key=Stellar',
-    getAudioUrl: (data) => data?.result?.dl_url,
-    getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail, 
-    getDuration: (data) => data?.result?.duration
   }
 ];
 
