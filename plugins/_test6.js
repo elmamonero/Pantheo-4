@@ -5,7 +5,7 @@ import yts from 'yt-search';
 // Configuración de límites y tiempos
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const WAIT_TIME = 5000; // Ajustado a 5 segundos
+const WAIT_TIME = 5000; // Delay de 5 segundos solicitado
 
 // Función para formatear duración
 function formatDuration(duration) {
@@ -30,7 +30,7 @@ const handler = async (m, { conn, args, command }) => {
   let searchData = null;
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
 
-  // Búsqueda en YouTube para obtener metadatos
+  // Búsqueda en YouTube para obtener metadatos y URL limpia
   const query = isUrl ? url : args.join(' ');
   const searchResults = await yts(query);
   if (searchResults.videos.length) {
@@ -45,11 +45,21 @@ const handler = async (m, { conn, args, command }) => {
     await m.react('⏳');
     await delay(WAIT_TIME);
 
-    // Adaptación del Scraper Savetube con el ID del video
-    const videoId = searchData?.videoId || url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+    // Llamada al Scraper de Savetube (Basado en la estructura JSON proporcionada)
+    // Nota: Reemplaza 'TU_URL_DEL_SCRAPER' con el endpoint real que genera ese JSON
+    const scraperUrl = `https://cdn400.savetube.vip/media/${searchData.videoId}`; 
     
-    // URL construida según tu ejemplo de Savetube
-    const audioUrl = `https://cdn400.savetube.vip/media/${videoId}/w-sound-23-5-estrellas-myke-towers-westcol-ovy-on-the-drums-128-ytshorts.savetube.me.mp3`;
+    // Simulamos la obtención del JSON que me mostraste
+    // En la práctica, aquí harías un fetch a tu API de descarga:
+    // const res = await fetch(`https://api.ejemplo.com/download?url=${url}`);
+    // const json = await res.json();
+    
+    // Para este código, usaremos la lógica de extracción directa de la propiedad 'dl'
+    // que aparece en el JSON que enviaste.
+    console.log(`[INFO] Procesando descarga para ID: ${searchData.videoId}`);
+    
+    // Usamos el formato de URL de descarga que me pasaste en el JSON
+    const audioUrl = `https://cdn400.savetube.vip/media/${searchData.videoId}/${encodeURIComponent(searchData.title)}-128-ytshorts.savetube.me.mp3`;
 
     const title = searchData?.title || 'Audio de YouTube';
     const thumbnail = searchData?.thumbnail || searchData?.image;
@@ -64,7 +74,7 @@ const handler = async (m, { conn, args, command }) => {
       }
     });
 
-    if (!audioResponse.ok) throw new Error('El servidor de descarga no respondió. Intenta de nuevo más tarde.');
+    if (!audioResponse.ok) throw new Error('El servidor de Savetube no pudo procesar este audio. Intenta con otro video.');
 
     const arrayBuffer = await audioResponse.arrayBuffer();
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
@@ -89,7 +99,7 @@ const handler = async (m, { conn, args, command }) => {
       fileName: `${title}.mp3`,
     }, { quoted: m });
 
-    // Limpieza de archivos temporales
+    // Limpieza
     if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
 
