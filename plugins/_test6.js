@@ -2,23 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
-// Configuración de límites y tiempos
+// Límites de descarga (250MB)
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
+// Función de espera personalizada (15 segundos según instrucciones de Sami)
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Scraper optimizado para Savetube
+ * Scraper adaptado para Savetube.vip
  */
 async function getAudioFromSavetube(url) {
   try {
-    console.log(`[DEBUG] Intentando obtener audio con Savetube...`);
+    console.log(`[DEBUG] Intentando obtener audio con el scraper de Savetube...`);
     
-    // Extraer ID de video para la API de Savetube
-    const videoId = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/user\/\S+|\/ytscreeningroom\?v=))([\w\-]{11})/)?.[1];
-    if (!videoId) return { success: false };
-
-    // Endpoint de Savetube para obtener el enlace de descarga (dl)
+    // API de Savetube para obtener la info del video y el link de descarga
     const apiUrl = `https://api.savetube.me/info?url=${encodeURIComponent(url)}`;
     
     const response = await fetch(apiUrl, {
@@ -29,20 +27,20 @@ async function getAudioFromSavetube(url) {
       }
     });
 
-    // Manejo de bloqueo: Espera de 15 segundos
+    // Si el bot está bloqueado, esperamos 15 segundos
     if (response.status === 429) {
-      console.log(`[WARN] Bot bloqueado. Esperando 15 segundos...`);
+      console.log(`[WARN] Bloqueo detectado. Esperando 15 segundos...`);
       await delay(15000); 
       return { success: false, error: 'rate-limit' };
     }
 
     const data = await response.json();
 
-    // Verificamos la estructura que me pasaste: data.dl
+    // Verificamos la existencia del enlace directo (dl)
     if (data && data.status && data.data && data.data.dl) {
       return {
         success: true,
-        url: data.data.dl,
+        url: data.data.dl, // Aquí vendrá el link tipo cdn400.savetube.vip
         title: data.data.title || 'Audio de YouTube',
         thumbnail: data.data.thumbnail,
         duration: data.data.duration
@@ -51,19 +49,20 @@ async function getAudioFromSavetube(url) {
     
     return { success: false };
   } catch (e) {
-    console.log(`❌ [ERROR] Error en el scraper de Savetube: ${e.message}`);
+    console.log(`❌ [ERROR] Error en el scraper Savetube: ${e.message}`);
     return { success: false };
   }
 }
 
 const handler = async (m, { conn, args }) => {
-  if (!args[0]) return m.reply('Por favor, ingresa un nombre o URL de YouTube');
+  // Verificación de argumentos
+  if (!args[0]) return m.reply('Por favor, ingresa un nombre o URL de un video de YouTube');
 
   let url = args[0];
   let searchData = null;
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
 
-  // Búsqueda previa para metadatos
+  // Búsqueda en YouTube para metadatos
   const query = isUrl ? url : args.join(' ');
   const searchResults = await yts(query);
   
@@ -79,14 +78,14 @@ const handler = async (m, { conn, args }) => {
 
     let apiResult = await getAudioFromSavetube(url);
 
-    // Reintento si hubo bloqueo tras esperar los 15 segundos
+    // Reintento tras la espera de 15 segundos si hubo bloqueo inicial
     if (!apiResult.success && apiResult.error === 'rate-limit') {
         apiResult = await getAudioFromSavetube(url);
     }
 
     if (!apiResult.success) {
       await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo obtener el audio de Savetube.`);
+      return m.reply(`*✖️ Error:* No se pudo obtener el audio con el scraper de Savetube.`);
     }
 
     const { url: audioUrl, title, thumbnail, duration } = apiResult;
@@ -96,13 +95,13 @@ const handler = async (m, { conn, args }) => {
     
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     
-    // Descarga desde el CDN (ej: cdn400.savetube.vip)
+    // Descarga desde el enlace directo del CDN
     const audioResponse = await fetch(audioUrl);
-    if (!audioResponse.ok) throw new Error('Error al descargar el archivo desde el CDN.');
+    if (!audioResponse.ok) throw new Error('Error al descargar el archivo desde el servidor de Savetube.');
 
     const arrayBuffer = await audioResponse.arrayBuffer();
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
-      throw new Error(`El archivo excede los ${MAX_SIZE_MB}MB permitidos.`);
+      throw new Error(`El archivo excede el límite de ${MAX_SIZE_MB}MB.`);
     }
 
     fs.writeFileSync(dest, Buffer.from(arrayBuffer));
@@ -110,19 +109,21 @@ const handler = async (m, { conn, args }) => {
 
     const caption = `🎵 *${finalTitle}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
 
+    // Envío de miniatura con info
     if (finalThumbnail) {
       await conn.sendMessage(m.chat, { image: { url: finalThumbnail }, caption }, { quoted: m });
     } else {
       await m.reply(caption);
     }
 
-    // Envío del código completo
+    // Envío del archivo de audio
     await conn.sendMessage(m.chat, {
       audio: fs.readFileSync(dest),
       mimetype: 'audio/mpeg',
       fileName: `${finalTitle}.mp3`,
     }, { quoted: m });
 
+    // Limpieza de archivos temporales
     if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
 
@@ -134,7 +135,7 @@ const handler = async (m, { conn, args }) => {
 };
 
 handler.help = ['pruebaplay <nombre|URL>'];
-handler.command = ['pruebaplay']; // Comando único
+handler.command = ['pruebaplay']; // Único comando permitido
 handler.tags = ['descargas'];
 
 export default handler;
