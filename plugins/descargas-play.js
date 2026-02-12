@@ -30,6 +30,14 @@ const APIS = [
     getDuration: (data) => data?.data?.duration
   },
   { 
+    name: 'FAA-ytplay',           
+    url: `https://api-faa.my.id/faa/ytplay?query=`,
+    getAudioUrl: (data) => data?.result?.mp3,
+    getTitle: (data) => data?.result?.title,
+    getThumb: (data) => data?.result?.thumbnail || data?.result?.thumb,
+    getDuration: (data) => data?.result?.duration
+  },
+  { 
     name: 'Stellar-v2-Yuki', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
     params: '&key=YukiWaBot',
@@ -37,14 +45,6 @@ const APIS = [
     getTitle: (data) => data?.data?.title,
     getThumb: (data) => data?.data?.thumbnail,
     getDuration: (data) => data?.data?.duration || data?.data?.timestamp
-  },
-  { 
-    name: 'FAA-ytplay',           
-    url: `https://api-faa.my.id/faa/ytplay?query=`,
-    getAudioUrl: (data) => data?.result?.mp3,
-    getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail || data?.result?.thumb,
-    getDuration: (data) => data?.result?.duration
   },
   { 
     name: 'Ootaizumi', 
