@@ -7,13 +7,22 @@ const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const APIS = [
   {
+    name: 'Nexevo-API',
+    url: `https://nexevo-api.vercel.app/download/y2?url=`,
+    params: '',
+    getVideoUrl: (data) => data?.result?.url,
+    getTitle: (data) => data?.result?.info?.title,
+    getThumb: (data) => data?.result?.info?.thumbnail,
+    getDuration: (data) => data?.result?.info?.duration 
+  },
+  {
     name: 'Sylphy-API',
     url: `https://sylphy.xyz/download/ytmp4?url=`,
     params: '&q=480p&api_key=sylphy-KthGG9y',
     getVideoUrl: (data) => data?.result?.dl_url, 
     getTitle: (data) => data?.result?.title,
     getThumb: (data) => data?.result?.thumbnail || null,
-    getDuration: (data) => data?.result?.duration || null // La API no lo envía según tu JSON
+    getDuration: (data) => data?.result?.duration || null
   }
 ];
 
@@ -43,6 +52,7 @@ async function getVideoFromApis(url, controller) {
       if (response.ok) {
         const data = await response.json();
         
+        // Verificación flexible de status true
         if (data?.status !== true && data?.status !== 'true') continue;
         
         const videoUrl = api.getVideoUrl(data);
@@ -72,7 +82,6 @@ const handler = async (m, { conn, args, command }) => {
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
   let searchData = {};
 
-  // Buscamos siempre info en yts para tener duración y thumbnail de respaldo
   try {
     const searchResults = await yts(isUrl ? url : args.join(' '));
     if (searchResults.videos.length > 0) {
@@ -99,7 +108,6 @@ const handler = async (m, { conn, args, command }) => {
 
     const { title, url: videoUrl } = apiResult;
     
-    // PRIORIDAD DE DATOS: API -> Búsqueda Manual -> "Desconocido"
     const finalDuration = apiResult.duration || searchData.timestamp || 'Desconocido';
     const finalThumb = apiResult.thumbnail || searchData.thumbnail || null;
     
@@ -124,6 +132,7 @@ const handler = async (m, { conn, args, command }) => {
       await m.reply(caption);
     }
 
+    // Nota: El usuario debe esperar 15 segundos según sus preferencias guardadas
     await conn.sendMessage(m.chat, {
       video: buffer,
       mimetype: 'video/mp4',
@@ -139,8 +148,8 @@ const handler = async (m, { conn, args, command }) => {
   }
 };
 
-handler.help = ['ytmp4 <nombre|URL>'];
-handler.command = ['ytmp4', 'video'];
+handler.help = ['pruebaplay <nombre|URL>'];
+handler.command = ['pruebaplay', 'ytmp4', 'video'];
 handler.tags = ['descargas'];
 
 export default handler;
