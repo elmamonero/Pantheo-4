@@ -57,7 +57,7 @@ const APIS = [
   { 
     // AHORA EN QUINTA POSICIÓN
     name: 'Sylphy-API', 
-    url: `https://sylphy.xyz/download/ytmp3?url=`,
+    url: `https://sylphy.xyz/download/v2/ytmp3?url=`,
     params: '&api_key=Stellar',
     getAudioUrl: (data) => data?.result?.dl_url,
     getTitle: (data) => data?.result?.title,
