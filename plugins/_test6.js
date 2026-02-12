@@ -6,7 +6,7 @@ import yts from 'yt-search';
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
-// Función de espera personalizada (Ahora configurada a 15 segundos)
+// Función de espera personalizada (Configurada a 15 segundos)
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function formatDuration(duration) {
@@ -43,7 +43,7 @@ async function getAudioFromCobalt(url) {
       })
     });
 
-    // Si el bot está bloqueado (Rate Limit), espera 15 segundos
+    // Manejo de bloqueo con espera de 15 segundos
     if (response.status === 429) {
       console.log(`[WARN] Bot bloqueado temporalmente. Esperando 15 segundos...`);
       await delay(15000); 
@@ -89,7 +89,7 @@ const handler = async (m, { conn, args }) => {
 
     let apiResult = await getAudioFromCobalt(url);
 
-    // Reintento tras la espera si hubo bloqueo
+    // Reintento si hubo bloqueo
     if (!apiResult.success && apiResult.error === 'rate-limit') {
         apiResult = await getAudioFromCobalt(url);
     }
@@ -141,8 +141,8 @@ const handler = async (m, { conn, args }) => {
   }
 };
 
-handler.help = ['play <nombre|URL>'];
-handler.command = ['play'];
+handler.help = ['pruebaplay <nombre|URL>'];
+handler.command = ['pruebaplay']; // Comando único actualizado
 handler.tags = ['descargas'];
 
 export default handler;
