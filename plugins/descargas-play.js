@@ -143,12 +143,12 @@ const handler = async (m, { conn, args }) => {
     const audioUrl = apiResult.url;
     
     // Nuevo formato visual exclusivo de Pantheon
-    const caption = `───「 **𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼** 」───\n\n` +
+    const caption = `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
                     `◈ *${title}*\n\n` +
-                    `↳ ✨ **𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:** ${duration}\n` +
-                    `↳ 👤 **𝖢𝖺𝗇𝖺𝗅:** ${channel}\n` +
-                    `↳ 🔗 **𝖤𝗇𝗅𝖺𝖼𝖾:** ${url}\n\n` +
-                    `_⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍 𝖤𝖽𝗂𝗍𝗂𝗈𝗇_`;
+                    `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
+                    `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
+                    `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
+                    `_⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     const audioResponse = await fetch(audioUrl);
