@@ -2,18 +2,18 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
-// Configuración de límites
+// Configuración de límites y tiempos
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 10000; // 10 segundos por API antes de saltar a la siguiente
+const API_TIMEOUT = 10000; // 10 segundos por API
 
 // Función para formatear duración
 function formatDuration(duration) {
-  if (!duration) return 'Desconocido';
+  if (!duration) return '00:00';
   if (typeof duration === 'string' && duration.includes(':')) return duration;
   
   const seconds = parseInt(duration);
-  if (isNaN(seconds)) return 'Desconocido';
+  if (isNaN(seconds)) return '00:00';
   
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
@@ -71,7 +71,6 @@ async function getAudioFromApis(url) {
     const id = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     try {
-      console.log(`[DEBUG] Intentando con API: ${api.name}...`);
       const encodedUrl = encodeURIComponent(url);
       const apiUrl = `${api.url}${encodedUrl}${api.params || ''}`;
       
@@ -87,19 +86,14 @@ async function getAudioFromApis(url) {
 
       if (response.ok) {
         const data = await response.json();
-        
-        // Verificación de datos
-        if (data?.status !== true && data?.status !== 'true' && !data?.result) {
-          continue;
-        }
+        if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
-          console.log(`✅ [SUCCESS] ${api.name} respondió correctamente.`);
           return {
             success: true,
             apiName: api.name,
-            title: api.getTitle(data) || 'Audio de YouTube',
+            title: api.getTitle(data),
             thumbnail: api.getThumb(data),
             url: audioUrl,
             duration: formatDuration(api.getDuration(data))
@@ -107,11 +101,6 @@ async function getAudioFromApis(url) {
         }
       }
     } catch (e) {
-      if (e.name === 'AbortError') {
-        console.log(`⏳ [TIMEOUT] ${api.name} tardó más de 10s. Pasando a la siguiente...`);
-      } else {
-        console.log(`❌ [ERROR] ${api.name}: ${e.message}`);
-      }
       continue;
     } finally {
       clearTimeout(id);
@@ -120,8 +109,8 @@ async function getAudioFromApis(url) {
   return { success: false };
 }
 
-const handler = async (m, { conn, args, command }) => {
-  if (!args[0]) return m.reply('Por favor, ingresa un nombre o URL de un video de YouTube');
+const handler = async (m, { conn, args }) => {
+  if (!args[0]) return m.reply('¿Qué canción buscamos hoy? Ingresa el nombre o el enlace.');
 
   let url = args[0];
   let searchData = null;
@@ -135,45 +124,44 @@ const handler = async (m, { conn, args, command }) => {
       if (!isUrl) url = searchData.url;
     }
 
-    if (!url) return m.reply('No se encontraron resultados');
+    if (!url) return m.reply('No encontré resultados para esa búsqueda.');
 
-    await m.react('🕒');
+    await m.react('🎧');
 
-    // Lógica de rotación de APIs con timeout de 10 segundos
+    // Sistema de balanceo por lentitud (10 segundos)
     let apiResult = await getAudioFromApis(url);
 
     if (!apiResult.success) {
-      await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo obtener el audio. Las APIs no responden o tardan demasiado.`);
+      await m.react('❌');
+      return m.reply(`*Lo siento:* Las fuentes de descarga están saturadas ahora mismo.`);
     }
 
-    const { title, thumbnail, url: audioUrl, apiName } = apiResult;
-    const finalThumbnail = thumbnail || searchData?.thumbnail || searchData?.image;
-    const finalDuration = apiResult.duration === 'Desconocido' && searchData 
-      ? searchData.timestamp 
-      : apiResult.duration;
+    const title = apiResult.title || searchData?.title || 'Audio de YouTube';
+    const thumbnail = apiResult.thumbnail || searchData?.thumbnail || searchData?.image;
+    const duration = apiResult.duration === '00:00' && searchData ? searchData.timestamp : apiResult.duration;
+    const channel = searchData?.author?.name || 'Canal de YouTube';
+    const audioUrl = apiResult.url;
     
-    const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
-    
-    const audioResponse = await fetch(audioUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    });
+    // Nuevo formato visual exclusivo de Pantheon
+    const caption = `───「 **𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼** 」───\n\n` +
+                    `◈ *${title}*\n\n` +
+                    `↳ ✨ **𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:** ${duration}\n` +
+                    `↳ 👤 **𝖢𝖺𝗇𝖺𝗅:** ${channel}\n` +
+                    `↳ 🔗 **𝖤𝗇𝗅𝖺𝖼𝖾:** ${url}\n\n` +
+                    `_⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍 𝖤𝖽𝗂𝗍𝗂𝗈𝗇_`;
 
-    if (!audioResponse.ok) throw new Error('Error al descargar el archivo de la API.');
+    const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
+    const audioResponse = await fetch(audioUrl);
+
+    if (!audioResponse.ok) throw new Error('Error de descarga.');
 
     const arrayBuffer = await audioResponse.arrayBuffer();
-    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
-      throw new Error(`El archivo es demasiado grande para ser enviado.`);
-    }
+    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) throw new Error(`El archivo es demasiado pesado.`);
 
     fs.writeFileSync(dest, Buffer.from(arrayBuffer));
-    const stats = fs.statSync(dest);
-    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
 
-    const caption = `🎵 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n🚀 API: ${apiName}\n\n*Pantheon Bot*`;
-
-    if (finalThumbnail) {
-      await conn.sendMessage(m.chat, { image: { url: finalThumbnail }, caption }, { quoted: m });
+    if (thumbnail) {
+      await conn.sendMessage(m.chat, { image: { url: thumbnail }, caption }, { quoted: m });
     } else {
       await m.reply(caption);
     }
@@ -188,9 +176,8 @@ const handler = async (m, { conn, args, command }) => {
     await m.react('✅');
 
   } catch (error) {
-    await m.react('✖️');
-    console.error(`[HANDLER ERROR]`, error);
-    m.reply(`⚠️ *Error:* ${error.message}`);
+    await m.react('❌');
+    m.reply(`⚠️ **Aviso:** ${error.message}`);
   }
 };
 
