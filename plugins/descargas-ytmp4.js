@@ -4,7 +4,7 @@ import yts from 'yt-search';
 
 const MAX_SIZE_MB = 150;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 10000; // 10 segundos por cada intento de API
+const API_TIMEOUT = 10000; 
 
 const APIS = [
   {
@@ -55,12 +55,10 @@ async function getVideoFromApis(url) {
       const encodedUrl = encodeURIComponent(url);
       const apiUrl = `${api.url}${encodedUrl}${api.params || ''}`;
       
-      console.log(`🎥 [YTMP4] Intentando con ${api.name}`);
-      
       const response = await fetch(apiUrl, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': 'application/json'
         }
       });
@@ -69,7 +67,7 @@ async function getVideoFromApis(url) {
 
       if (response.ok) {
         const data = await response.json();
-        if (data?.status !== true && data?.status !== 'true') continue;
+        if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
         
         const videoUrl = api.getVideoUrl(data);
         if (videoUrl) {
@@ -84,7 +82,7 @@ async function getVideoFromApis(url) {
         }
       }
     } catch (e) {
-      console.log(`⏳ [YTMP4] ${api.name} saltada por tiempo o error.`);
+      console.log(`[YTMP4] Saltando ${api.name}...`);
     } finally {
       clearTimeout(id);
     }
@@ -92,7 +90,7 @@ async function getVideoFromApis(url) {
   return { success: false };
 }
 
-const handler = async (m, { conn, args, command }) => {
+const handler = async (m, { conn, args }) => {
   if (!args[0]) return m.reply('¿Qué video quieres descargar? Ingresa el nombre o URL.');
 
   let url = args[0];
@@ -116,25 +114,32 @@ const handler = async (m, { conn, args, command }) => {
 
     if (!apiResult.success) {
       await m.react('✖️');
-      return m.reply(`*Lo siento:* No se pudo obtener el video. Inténtalo de nuevo más tarde.`);
+      return m.reply(`*Lo siento:* No se pudo obtener un enlace de video funcional.`);
     }
 
-    const { title, url: videoUrl, api: apiName } = apiResult;
+    const { title, url: videoUrl } = apiResult;
     const finalDuration = apiResult.duration !== '00:00' ? apiResult.duration : (searchData.timestamp || '00:00');
     const finalThumb = apiResult.thumbnail || searchData.thumbnail || null;
     const channel = searchData?.author?.name || 'YouTube';
     
-    const videoResponse = await fetch(videoUrl);
-    if (!videoResponse.ok) throw new Error('Error al conectar con el servidor de video.');
+    // DESCARGA MEJORADA CON HEADERS
+    const videoResponse = await fetch(videoUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://www.youtube.com/'
+        }
+    });
+
+    if (!videoResponse.ok) throw new Error('El servidor de archivos no respondió.');
 
     const arrayBuffer = await videoResponse.arrayBuffer();
-    const sizeMB = (arrayBuffer.byteLength/1024/1024).toFixed(1);
-    
-    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) throw new Error(`El video es muy pesado (${sizeMB}MB).`);
-
     const buffer = Buffer.from(arrayBuffer);
+    const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
     
-    // Nuevo formato visual Pantheon
+    // Verificación básica de integridad (evita enviar archivos corruptos de 0-1kb)
+    if (buffer.length < 50000) throw new Error('El video recibido está incompleto o es inválido.');
+    if (buffer.length > MAX_SIZE_BYTES) throw new Error(`El video es muy pesado (${sizeMB}MB).`);
+
     const caption = `───「 **𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖵𝗂𝖽𝖾𝗈** 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ **𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:** ${finalDuration}\n` +
@@ -148,6 +153,7 @@ const handler = async (m, { conn, args, command }) => {
       await m.reply(caption);
     }
 
+    // Enviar el video como stream de buffer
     await conn.sendMessage(m.chat, {
       video: buffer,
       mimetype: 'video/mp4',
