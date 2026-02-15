@@ -4,8 +4,18 @@ import yts from 'yt-search';
 
 const MAX_SIZE_MB = 150;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+const API_TIMEOUT = 10000; // 10 segundos por cada intento de API
 
 const APIS = [
+  {
+    name: 'Nightlight',
+    url: `https://api.nightlight.qzz.io/dl/ytmp4?url=`,
+    params: '&quality=auto&key=api-GRZpK',
+    getVideoUrl: (data) => data?.result?.url,
+    getTitle: (data) => data?.result?.title,
+    getThumb: (data) => data?.result?.thumb,
+    getDuration: (data) => data?.result?.duration 
+  },
   {
     name: 'Nexevo-API',
     url: `https://nexevo-api.vercel.app/download/y2?url=`,
@@ -27,14 +37,20 @@ const APIS = [
 ];
 
 function formatDuration(seconds) {
-  if (!seconds || isNaN(seconds)) return null;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  if (!seconds) return '00:00';
+  if (typeof seconds === 'string' && seconds.includes(':')) return seconds;
+  const secs = parseInt(seconds);
+  if (isNaN(secs)) return '00:00';
+  const mins = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${mins}:${s.toString().padStart(2, '0')}`;
 }
 
-async function getVideoFromApis(url, controller) {
+async function getVideoFromApis(url) {
   for (const api of APIS) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), API_TIMEOUT);
+
     try {
       const encodedUrl = encodeURIComponent(url);
       const apiUrl = `${api.url}${encodedUrl}${api.params || ''}`;
@@ -44,10 +60,12 @@ async function getVideoFromApis(url, controller) {
       const response = await fetch(apiUrl, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': 'application/json'
         }
       });
+
+      clearTimeout(id);
 
       if (response.ok) {
         const data = await response.json();
@@ -66,14 +84,16 @@ async function getVideoFromApis(url, controller) {
         }
       }
     } catch (e) {
-      console.log(`❌ [YTMP4] ${api.name} falló: ${e.message}`);
+      console.log(`⏳ [YTMP4] ${api.name} saltada por tiempo o error.`);
+    } finally {
+      clearTimeout(id);
     }
   }
   return { success: false };
 }
 
 const handler = async (m, { conn, args, command }) => {
-  if (!args[0]) return m.reply('Por favor, ingresa un nombre o URL de YouTube.');
+  if (!args[0]) return m.reply('¿Qué video quieres descargar? Ingresa el nombre o URL.');
 
   let url = args[0];
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
@@ -92,40 +112,35 @@ const handler = async (m, { conn, args, command }) => {
   try {
     await m.react('🕒');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-    const apiResult = await getVideoFromApis(url, controller);
-    clearTimeout(timeoutId);
+    const apiResult = await getVideoFromApis(url);
 
     if (!apiResult.success) {
       await m.react('✖️');
-      return m.reply(`*✖️ Error:* No se pudo obtener un enlace de descarga válido.`);
+      return m.reply(`*Lo siento:* No se pudo obtener el video. Inténtalo de nuevo más tarde.`);
     }
 
-    const { title, url: videoUrl } = apiResult;
-    const finalDuration = apiResult.duration || searchData.timestamp || 'Desconocido';
+    const { title, url: videoUrl, api: apiName } = apiResult;
+    const finalDuration = apiResult.duration !== '00:00' ? apiResult.duration : (searchData.timestamp || '00:00');
     const finalThumb = apiResult.thumbnail || searchData.thumbnail || null;
+    const channel = searchData?.author?.name || 'YouTube';
     
-    // Descarga del video con headers para evitar bloqueos
-    const videoResponse = await fetch(videoUrl, { 
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Referer': 'https://nexevo-api.vercel.app/'
-      }
-    });
-
-    if (!videoResponse.ok) throw new Error('El servidor de descarga rechazó la petición.');
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) throw new Error('Error al conectar con el servidor de video.');
 
     const arrayBuffer = await videoResponse.arrayBuffer();
     const sizeMB = (arrayBuffer.byteLength/1024/1024).toFixed(1);
     
-    if (arrayBuffer.byteLength < 1000) throw new Error('El archivo descargado está corrupto o vacío.');
     if (arrayBuffer.byteLength > MAX_SIZE_BYTES) throw new Error(`El video es muy pesado (${sizeMB}MB).`);
 
     const buffer = Buffer.from(arrayBuffer);
-    const caption = `🎥 *${title}*\n⏱️ ${finalDuration}\n💾 ${sizeMB}MB\n\n*Pantheon Bot*`;
+    
+    // Nuevo formato visual Pantheon
+    const caption = `───「 **𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖵𝗂𝖽𝖾𝗈** 」───\n\n` +
+                    `◈ *${title}*\n\n` +
+                    `↳ ✨ **𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:** ${finalDuration}\n` +
+                    `↳ 👤 **𝖢𝖺𝗇𝖺𝗅:** ${channel}\n` +
+                    `↳ 💾 **𝖳𝖺𝗆𝖺𝗇̃𝗈:** ${sizeMB}MB\n\n` +
+                    `_⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍 𝖤𝖽𝗂𝗍𝗂𝗈𝗇_`;
 
     if (finalThumb) {
       await conn.sendMessage(m.chat, { image: { url: finalThumb }, caption }, { quoted: m });
@@ -133,7 +148,6 @@ const handler = async (m, { conn, args, command }) => {
       await m.reply(caption);
     }
 
-    // Recuerda que el comando para el scraper es .pruebaplay
     await conn.sendMessage(m.chat, {
       video: buffer,
       mimetype: 'video/mp4',
@@ -145,12 +159,12 @@ const handler = async (m, { conn, args, command }) => {
   } catch (error) {
     console.error(error);
     await m.react('✖️');
-    m.reply(`⚠️ *Error:* ${error.message}`);
+    m.reply(`⚠️ **Aviso:** ${error.message}`);
   }
 };
 
-handler.help = ['pruebaplay <nombre|URL>'];
-handler.command = ['pruebaplay', 'ytmp4', 'video'];
+handler.help = ['playvideo <nombre|URL>'];
+handler.command = ['playvideo', 'ytmp4', 'video'];
 handler.tags = ['descargas'];
 
 export default handler;
