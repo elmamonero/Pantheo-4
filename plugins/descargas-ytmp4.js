@@ -14,7 +14,7 @@ const handler = async (m, { conn, args }) => {
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
 
   try {
-    // Búsqueda en YouTube
+    // Búsqueda en YouTube para obtener metadatos extra si es necesario
     const query = isUrl ? url : args.join(' ');
     const searchResults = await yts(query);
     if (searchResults.videos.length) {
@@ -26,7 +26,7 @@ const handler = async (m, { conn, args }) => {
 
     await m.react('🎬');
 
-    // API Nightlight (Única fuente)
+    // API Nightlight adaptada a la estructura correcta
     const apiUrl = `https://api.nightlight.qzz.io/dl/ytmp4?url=${encodeURIComponent(url)}&quality=auto&key=api-GRZpK`;
     
     const apiResponse = await fetch(apiUrl, {
@@ -36,20 +36,21 @@ const handler = async (m, { conn, args }) => {
       }
     });
 
-    const data = await apiResponse.json();
+    const result = await apiResponse.json();
 
-    if (!data.status || !data.result?.url) {
+    // Verificación basada en la estructura: { status: true, data: { dl: "..." } }
+    if (!result.status || !result.data?.dl) {
       await m.react('❌');
-      return m.reply('*Error:* La API no pudo procesar este video en particular.');
+      return m.reply('*Error:* La API no devolvió un enlace de descarga válido.');
     }
 
-    const videoUrl = data.result.url;
-    const title = data.result.title || searchData?.title || 'Video de YouTube';
-    const finalThumb = data.result.thumb || searchData?.thumbnail || null;
-    const duration = data.result.duration || searchData?.timestamp || '00:00';
+    const videoUrl = result.data.dl;
+    const title = result.data.title || searchData?.title || 'Video de YouTube';
+    const finalThumb = searchData?.thumbnail || searchData?.image || null;
+    const duration = searchData?.timestamp || '00:00';
     const channel = searchData?.author?.name || 'YouTube';
 
-    // Descarga del archivo
+    // Descarga del archivo con headers para evitar archivos corruptos
     const dest = path.join('/tmp', `${Date.now()}_video.mp4`);
     const fileResponse = await fetch(videoUrl, {
       headers: { 
@@ -58,18 +59,19 @@ const handler = async (m, { conn, args }) => {
       }
     });
 
-    if (!fileResponse.ok) throw new Error('Fallo al descargar el archivo desde el servidor.');
+    if (!fileResponse.ok) throw new Error('Fallo al conectar con el servidor de descarga.');
 
     const arrayBuffer = await fileResponse.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    if (buffer.length < 50000) throw new Error('El video descargado es demasiado pequeño o está dañado.');
+    // Si el buffer es muy pequeño, el video no es válido
+    if (buffer.length < 50000) throw new Error('El archivo descargado está dañado o incompleto.');
     if (buffer.length > MAX_SIZE_BYTES) throw new Error(`El video excede el límite de ${MAX_SIZE_MB}MB.`);
 
     fs.writeFileSync(dest, buffer);
     const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
 
-    // Formato visual Pantheon
+    // Formato visual único Pantheon
     const caption = `───「 **𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖵𝗂𝖽𝖾𝗈** 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ **𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:** ${duration}\n` +
@@ -77,21 +79,21 @@ const handler = async (m, { conn, args }) => {
                     `↳ 💾 **𝖳𝖺𝗆𝖺𝗇̃𝗈:** ${sizeMB}MB\n\n` +
                     `_⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍 𝖤𝖽𝗂𝗍𝗂𝗈𝗇_`;
 
-    // Enviar miniatura con información
+    // Enviar mensaje con miniatura
     if (finalThumb) {
       await conn.sendMessage(m.chat, { image: { url: finalThumb }, caption }, { quoted: m });
     } else {
       await m.reply(caption);
     }
 
-    // Enviar el video
+    // Enviar el video final
     await conn.sendMessage(m.chat, {
       video: fs.readFileSync(dest),
       mimetype: 'video/mp4',
       fileName: `${title}.mp4`,
     }, { quoted: m });
 
-    // Limpieza
+    // Limpieza de memoria
     if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
 
