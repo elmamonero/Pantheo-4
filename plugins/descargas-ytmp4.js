@@ -2,9 +2,23 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
+// Configuración de límites y tiempos
 const MAX_SIZE_MB = 150;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 10000; 
+const API_TIMEOUT = 10000; // 10 segundos por API antes de saltar
+
+// Función para formatear duración
+function formatDuration(duration) {
+  if (!duration) return '00:00';
+  if (typeof duration === 'string' && duration.includes(':')) return duration;
+  
+  const seconds = parseInt(duration);
+  if (isNaN(seconds)) return '00:00';
+  
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
 
 const APIS = [
   {
@@ -19,7 +33,6 @@ const APIS = [
   {
     name: 'Nexevo-API',
     url: `https://nexevo-api.vercel.app/download/y2?url=`,
-    params: '',
     getVideoUrl: (data) => data?.result?.url,
     getTitle: (data) => data?.result?.info?.title,
     getThumb: (data) => data?.result?.info?.thumbnail,
@@ -31,20 +44,10 @@ const APIS = [
     params: '&q=480p&api_key=sylphy-KthGG9y',
     getVideoUrl: (data) => data?.result?.dl_url, 
     getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail || null,
-    getDuration: (data) => data?.result?.duration || null
+    getThumb: (data) => data?.result?.thumbnail,
+    getDuration: (data) => data?.result?.duration
   }
 ];
-
-function formatDuration(seconds) {
-  if (!seconds) return '00:00';
-  if (typeof seconds === 'string' && seconds.includes(':')) return seconds;
-  const secs = parseInt(seconds);
-  if (isNaN(secs)) return '00:00';
-  const mins = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${mins}:${s.toString().padStart(2, '0')}`;
-}
 
 async function getVideoFromApis(url) {
   for (const api of APIS) {
@@ -58,7 +61,7 @@ async function getVideoFromApis(url) {
       const response = await fetch(apiUrl, {
         signal: controller.signal,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': 'application/json'
         }
       });
@@ -67,14 +70,15 @@ async function getVideoFromApis(url) {
 
       if (response.ok) {
         const data = await response.json();
+        // Verificación de status flexible
         if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
         
         const videoUrl = api.getVideoUrl(data);
         if (videoUrl) {
           return {
             success: true,
-            api: api.name,
-            title: api.getTitle(data) || 'Video de YouTube',
+            apiName: api.name,
+            title: api.getTitle(data),
             thumbnail: api.getThumb(data),
             url: videoUrl,
             duration: formatDuration(api.getDuration(data))
@@ -82,7 +86,7 @@ async function getVideoFromApis(url) {
         }
       }
     } catch (e) {
-      console.log(`[YTMP4] Saltando ${api.name}...`);
+      continue; // Salta a la siguiente API si hay timeout o error
     } finally {
       clearTimeout(id);
     }
@@ -91,55 +95,57 @@ async function getVideoFromApis(url) {
 }
 
 const handler = async (m, { conn, args }) => {
-  if (!args[0]) return m.reply('¿Qué video quieres descargar? Ingresa el nombre o URL.');
+  if (!args[0]) return m.reply('¿Qué video buscamos hoy? Ingresa el nombre o el enlace.');
 
   let url = args[0];
+  let searchData = null;
   const isUrl = /(youtube\.com|youtu\.be)/.test(url);
-  let searchData = {};
 
   try {
-    const searchResults = await yts(isUrl ? url : args.join(' '));
-    if (searchResults.videos.length > 0) {
+    const query = isUrl ? url : args.join(' ');
+    const searchResults = await yts(query);
+    if (searchResults.videos.length) {
       searchData = searchResults.videos[0];
       if (!isUrl) url = searchData.url;
     }
-  } catch (e) {
-    console.log("Error en yts");
-  }
 
-  try {
-    await m.react('🕒');
+    if (!url) return m.reply('No encontré resultados para esa búsqueda.');
 
-    const apiResult = await getVideoFromApis(url);
+    await m.react('🎬');
+
+    // Lógica de rotación idéntica a la de audio
+    let apiResult = await getVideoFromApis(url);
 
     if (!apiResult.success) {
-      await m.react('✖️');
-      return m.reply(`*Lo siento:* No se pudo obtener un enlace de video funcional.`);
+      await m.react('❌');
+      return m.reply(`*Error:* No se pudo obtener el video de ninguna fuente disponible.`);
     }
 
-    const { title, url: videoUrl } = apiResult;
-    const finalDuration = apiResult.duration !== '00:00' ? apiResult.duration : (searchData.timestamp || '00:00');
-    const finalThumb = apiResult.thumbnail || searchData.thumbnail || null;
+    const { title, thumbnail, url: videoUrl, apiName } = apiResult;
+    const finalThumbnail = thumbnail || searchData?.thumbnail || searchData?.image;
+    const finalDuration = apiResult.duration === '00:00' && searchData ? searchData.timestamp : apiResult.duration;
     const channel = searchData?.author?.name || 'YouTube';
     
-    // DESCARGA MEJORADA CON HEADERS
+    // Descarga del buffer real
+    const dest = path.join('/tmp', `${Date.now()}_video.mp4`);
     const videoResponse = await fetch(videoUrl, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': 'https://www.youtube.com/'
-        }
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Referer': 'https://www.youtube.com/'
+      }
     });
 
-    if (!videoResponse.ok) throw new Error('El servidor de archivos no respondió.');
+    if (!videoResponse.ok) throw new Error('Fallo al descargar el archivo de video.');
 
     const arrayBuffer = await videoResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const sizeMB = (buffer.length / 1024 / 1024).toFixed(1);
-    
-    // Verificación básica de integridad (evita enviar archivos corruptos de 0-1kb)
-    if (buffer.length < 50000) throw new Error('El video recibido está incompleto o es inválido.');
-    if (buffer.length > MAX_SIZE_BYTES) throw new Error(`El video es muy pesado (${sizeMB}MB).`);
+    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) throw new Error(`El video es muy pesado.`);
+    if (arrayBuffer.byteLength < 10000) throw new Error(`El archivo descargado no es válido.`);
 
+    fs.writeFileSync(dest, Buffer.from(arrayBuffer));
+    const stats = fs.statSync(dest);
+    const sizeMB = (stats.size / 1024 / 1024).toFixed(1);
+
+    // Formato visual Pantheon
     const caption = `───「 **𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖵𝗂𝖽𝖾𝗈** 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ **𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:** ${finalDuration}\n` +
@@ -147,24 +153,25 @@ const handler = async (m, { conn, args }) => {
                     `↳ 💾 **𝖳𝖺𝗆𝖺𝗇̃𝗈:** ${sizeMB}MB\n\n` +
                     `_⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍 𝖤𝖽𝗂𝗍𝗂𝗈𝗇_`;
 
-    if (finalThumb) {
-      await conn.sendMessage(m.chat, { image: { url: finalThumb }, caption }, { quoted: m });
+    if (finalThumbnail) {
+      await conn.sendMessage(m.chat, { image: { url: finalThumbnail }, caption }, { quoted: m });
     } else {
       await m.reply(caption);
     }
 
-    // Enviar el video como stream de buffer
+    // Envío del video
     await conn.sendMessage(m.chat, {
-      video: buffer,
+      video: fs.readFileSync(dest),
       mimetype: 'video/mp4',
       fileName: `${title}.mp4`,
     }, { quoted: m });
 
+    if (fs.existsSync(dest)) fs.unlinkSync(dest);
     await m.react('✅');
 
   } catch (error) {
+    await m.react('❌');
     console.error(error);
-    await m.react('✖️');
     m.reply(`⚠️ **Aviso:** ${error.message}`);
   }
 };
