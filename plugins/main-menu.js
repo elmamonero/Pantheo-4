@@ -157,6 +157,7 @@ ${readMore}
 ⠞🌿੭‎ ${usedPrefix}promote *@tag*
 ⠞🌿੭‎ ${usedPrefix}demote *@tag*
 ⠞🌿੭‎ ${usedPrefix}kick *@tag*
+⠞🌿੭‎ ${usedPrefix}ruletaban
 ⠞🌿੭‎ ${usedPrefix}mute *@tag*
 ⠞🌿੭‎ ${usedPrefix}totalmensajes
 ⠞🌿੭‎ ${usedPrefix}resetmensajes
