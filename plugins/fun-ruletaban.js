@@ -1,59 +1,55 @@
 let handler = async (m, { conn, participants }) => {
-    // Filtrar administradores
-    const gAdmins = participants.filter(p => p.admin);
+    // 1. Filtrar solo a los que NO son admins y NO son el bot
     const botId = conn.user.jid || conn.user.id;
-    
-    // gNoAdmins: Filtramos para que NO sea el bot, NO sea admin y NO sea el creador del grupo
     const gNoAdmins = participants.filter(p => !p.admin && p.id !== botId);
 
     if (gNoAdmins.length === 0) {
-        return m.reply('*[ ⚠️ ] No hay usuarios (no admins) disponibles en este grupo para jugar.*');
+        return m.reply('*[ ⚠️ ] No hay usuarios comunes para eliminar. Todos aquí son intocables (Admins).*');
     }
 
     try {
-        m.react('🎰');
+        await m.react('🎰');
 
-        // Enviar mensaje inicial (Corregida la coma que faltaba)
-        let msg = await conn.reply(m.chat, '*[ 🎰 ] La ruleta está comenzando a girar...*', m);
+        // 2. Mensaje inicial de la ruleta
+        let msg = await conn.reply(m.chat, '*[ 🎰 ] La ruleta de la muerte está girando...*', m);
 
-        // Pequeña cuenta regresiva/animación editando el mensaje
-        const countdown = [
-            '*[ 🎰 ] ⚪ La ruleta gira...*',
-            '*[ 🎰 ] ⚫ La ruleta gira...*',
-            '*[ 🎰 ] 🔴 ¡Ya casi se detiene!*'
+        // Animación de edición para generar suspenso
+        const frames = [
+            '*[ 🎰 ] ⚪ Girando...*',
+            '*[ 🎰 ] ⚫ Girando...*',
+            '*[ 🎰 ] 🔴 ¡SE DETUVO!*'
         ];
 
-        for (let i = 0; i < countdown.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            await conn.sendMessage(m.chat, { text: countdown[i], edit: msg.key });
+        for (let frame of frames) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            await conn.sendMessage(m.chat, { text: frame, edit: msg.key });
         }
 
-        // Elegir usuario aleatorio de la lista de NO administradores
-        const randomUser = gNoAdmins[Math.floor(Math.random() * gNoAdmins.length)].id;
-        
-        // Formatear mención
-        const mention = `@${randomUser.split('@')[0]}`;
+        // 3. Elección 100% aleatoria
+        const victimIndex = Math.floor(Math.random() * gNoAdmins.length);
+        const victim = gNoAdmins[victimIndex].id;
+        const tag = `@${victim.split('@')[0]}`;
 
-        // Anunciar al elegido
+        // 4. Anuncio del perdedor
         await new Promise(resolve => setTimeout(resolve, 1000));
         await conn.sendMessage(m.chat, { 
-            text: `*[ 🎰 ] La ruleta ha elegido a:*\n\n${mention}\n\n😈 *¡Adiós, nos vemos en el lobby!*`, 
-            mentions: [randomUser] 
+            text: `*[ 🎰 ] El destino ha hablado:*\n\n${tag}\n\n😈 *¡Fuera del grupo!*`, 
+            mentions: [victim] 
         }, { quoted: m });
 
-        // Esperar para dramatismo
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        // Espera dramática antes del ban
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Eliminar al usuario
-        await conn.groupParticipantsUpdate(m.chat, [randomUser], 'remove');
+        // 5. Ejecución (Eliminar usuario)
+        await conn.groupParticipantsUpdate(m.chat, [victim], 'remove');
 
-        // Mensaje final
-        await conn.reply(m.chat, `*Bueno, un usuario menos. La limpieza ha terminado 👻*`, null);
-        m.react('✅');
+        // Reacción final de éxito (Sin mensaje extra de spam)
+        await m.react('✅');
 
     } catch (e) {
         console.error(e);
-        m.reply('*[ ✖️ ] Hubo un error al intentar ejecutar la ruleta.*');
+        await m.react('✖️');
+        m.reply('*[ ✖️ ] No pude eliminar al usuario. Revisa mis permisos de Admin.*');
     }
 };
 
