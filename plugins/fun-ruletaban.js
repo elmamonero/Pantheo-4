@@ -1,4 +1,4 @@
-/*let handler = async (m, { conn, participants }) => {
+let handler = async (m, { conn, participants }) => {
     const gAdmins = participants.filter(p => p.admin);
     const botId = conn.user.jid;
     const gOwner = gAdmins.find(p => p.isAdmin)?.id;
