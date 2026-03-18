@@ -3,18 +3,18 @@ import axios from 'axios'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const username = conn.getName(m.sender)
   
-  // Configuración de la personalidad del Bot
-  const basePrompt = `Tu nombre es Pantheon Bot y fuiste creado por Pantheon. Eres masculino, divertido y hablas español. Tu estilo es preciso, claro y sin barreras. Usa emojis. Llama al usuario por su nombre: ${username}.`
+  // PERSONALIDAD: Bromista, un poco grosero, respuestas cortas y directas.
+  const basePrompt = `Tu nombre es Pantheon Bot, creado por Pantheon. Eres un tipo bromista, sarcástico y un poco grosero (pero sin pasarte de la raya). No te gusta escribir mucho, prefieres las respuestas cortas, ácidas y directas. Saluda a ${username} de forma burlona. Hablas español con jerga informal y usas emojis que denoten sarcasmo o burla. No des explicaciones largas.`
 
   try {
-    // Definimos el query de forma segura (sin usar .match)
-    // Busca texto en el mensaje actual, o en el mensaje citado (texto o caption)
+    // Definimos el query de forma segura
     let query = text || (m.quoted && (m.quoted.text || m.quoted.caption)) || null
 
     if (!query) {
-      return conn.reply(m.chat, `*[ 🤖 ] Ingrese su petición*\n\n*[ 💡 ] Ejemplo:* ${usedPrefix + command} Hola, ¿quién eres?`, m)
+      return conn.reply(m.chat, `*[ 🤖 ] ¿Qué quieres? No escribiste nada.*\n\n*Ejemplo:* ${usedPrefix + command} Hola idiota`, m)
     }
 
+    // Efecto de "escribiendo"
     await conn.sendPresenceUpdate('composing', m.chat)
 
     // Llamada a la API de Sylphy (Gemini)
@@ -24,11 +24,10 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
     await conn.reply(m.chat, response, m)
 
   } catch (error) {
-    // En caso de error, enviamos el detalle por WhatsApp
     console.error(error)
-    const errorMessage = `*[ ❌ ] ERROR EN IA*\n\n` +
-                         `*Tipo:* ${error.name}\n` +
-                         `*Mensaje:* ${error.message}\n` +
+    // Enviar detalle del error por WhatsApp
+    const errorMessage = `*[ ❌ ] ALGO SALIÓ MAL*\n\n` +
+                         `*Error:* ${error.message}\n` +
                          `*Comando:* ${usedPrefix + command}`
     
     await conn.reply(m.chat, errorMessage, m)
@@ -38,7 +37,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 handler.help = ['ia']
 handler.tags = ['tools']
 handler.register = true
-handler.command = ['ia', 'ai', 'pantheon', 'bot'] 
+handler.command = ['bot'] 
 
 export default handler
 
@@ -52,11 +51,11 @@ async function sylphyGemini(query, prompt) {
     
     const response = await axios.get(url)
     
-    // Según el JSON que enviaste, la ruta es: response.data.result.text
+    // Ruta del JSON: response.data.result.text
     const result = response.data?.result?.text || response.data?.result || response.data?.response
     
     if (!result) {
-      throw new Error('La API no devolvió el campo "result.text" esperado.')
+      throw new Error('La IA se quedó muda, no mandó texto.')
     }
     
     return result
