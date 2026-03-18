@@ -24,9 +24,9 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
     const botname = 'Pantheon Bot';
 
     const text = `
-︵᷼     ⿻ *PANTHEON* ࣪   ࣭   ࣪ WA BOT ࣭   🐈  ࣪   ࣭
-✿ Hᴏʟᴀ ${taguser}
-${saludo}
+︵᷼     ⿻ *PANTHEON* ࣪   ࣭   ࣪ *WA BOT* ࣭   🐈  ࣪   ࣭
+✿ *Hᴏʟᴀ* *${taguser}*
+*${saludo}*
 
 > ꒰꛱ ͜Desarrollado por *Pantheon* +573203680195
 
