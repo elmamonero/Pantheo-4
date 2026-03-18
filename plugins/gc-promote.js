@@ -1,38 +1,32 @@
 var handler = async (m, { conn, usedPrefix, command, text }) => {
   let user;
 
-  // 1. Prioridad: Si responde a un mensaje
+  // 1. Prioridad: Si el usuario responde a un mensaje
   if (m.quoted) {
     user = m.quoted.sender;
   } 
-  // 2. Segunda opción: Si menciona a alguien con @
+  // 2. Segunda opción: Si el usuario menciona a alguien con @tag
   else if (m.mentionedJid && m.mentionedJid[0]) {
     user = m.mentionedJid[0];
   } 
-  // 3. Tercera opción: Si escribe el número manualmente en el texto
-  else if (text) {
-    let number = text.replace(/[^0-9]/g, '');
-    if (number.length > 0) {
-      user = number + '@s.whatsapp.net';
-    }
+
+  // Si no se detectó respuesta ni mención, enviamos el mensaje de ayuda
+  if (!user) {
+    return conn.reply(m.chat, `✨ *Debe responder a un mensaje o mencionar a una persona (@tag) para usar este comando.*`, m);
   }
 
-  // Si no se encontró ningún usuario válido
-  if (!user) return conn.reply(m.chat, `[🌠] *Debe responder a un mensaje, mencionar a alguien o escribir su número para darle Admin.*`, m);
-
   try {
+    // Ejecutamos la promoción en el grupo
     await conn.groupParticipantsUpdate(m.chat, [user], 'promote');
-    conn.reply(m.chat, `✅ *Usuario promovido a Admin con éxito.*`, m);
+    conn.reply(m.chat, `✅ *¡Listo! El usuario ahora es administrador.*`, m);
   } catch (e) {
     console.error(e);
-    conn.reply(m.chat, `❎ *No se pudo dar admin. Asegúrate de que el usuario siga en el grupo.*`, m);
+    conn.reply(m.chat, `❎ *Hubo un error al intentar dar admin. Verifica que el usuario siga en el grupo.*`, m);
   }
 };
 
 handler.help = ['promote'];
 handler.tags = ['grupo'];
-// Recordatorio: Según tu preferencia, si este es el comando de menú, usarías .menuprueba
-// Pero como este es el comando de 'promote', mantenemos sus nombres originales.
 handler.command = ['promote', 'darpija', 'promover'];
 
 handler.group = true;
