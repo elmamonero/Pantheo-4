@@ -281,12 +281,12 @@ ${readMore}
     conn.sendMessage(m.chat, {
       text: text,
       contextInfo: {
-        mentionedJid: conn.parseMention(text),
+        mentionedJid: [m.sender], // Esto soluciona el problema del tag
         isForwarded: true,
         forwardingScore: 999,
         externalAdReply: {
-          title: '',
-          body: 'Pantheon Bot',
+          title: 'Pantheon Bot',
+          body: `Hola ${taguser}`,
           thumbnail: await (await fetch(img)).buffer(),
           sourceUrl: insta,
           mediaType: 1,
