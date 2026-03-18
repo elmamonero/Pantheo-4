@@ -16,8 +16,7 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
     let totalreg = Object.keys(global.db.data.users || {}).length;
     let rtotalreg = Object.values(global.db.data.users || {}).filter(user => user.registered).length;
 
-    const taguser = '@' + m.sender.split('@s.whatsapp.net')[0];
-
+    const taguser = `@${m.sender.split('@')[0]}`;
     const botname = 'Pantheon Bot';
 
     const text = `
