@@ -25,7 +25,7 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
 
     const text = `
 ︵᷼     ⿻ *PANTHEON* ࣪   ࣭   ࣪ *WA BOT* ࣭   🐈  ࣪   ࣭
-✿ *Hᴏʟᴀ* *${taguser}*
+✿ Hᴏʟᴀ ${taguser}
 *${saludo}*
 
 > ꒰꛱ ͜Desarrollado por *Pantheon* +573203680195
