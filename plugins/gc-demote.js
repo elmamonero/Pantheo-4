@@ -1,36 +1,44 @@
-const handler = async (m, {conn, usedPrefix, text}) => {
-  if (isNaN(text) && !text.match(/@/g)) {
-  } else if (isNaN(text)) {
-    var number = text.split`@`[1];
-  } else if (!isNaN(text)) {
-    var number = text;
+const handler = async (m, { conn, usedPrefix, text }) => {
+  let user;
+
+  // 1. Prioridad: Si responde a un mensaje
+  if (m.quoted) {
+    user = m.quoted.sender;
+  } 
+  // 2. Segunda opción: Si menciona a alguien con @tag
+  else if (m.mentionedJid && m.mentionedJid[0]) {
+    user = m.mentionedJid[0];
+  } 
+
+  // Si no hay respuesta ni mención, enviamos mensaje de ayuda
+  if (!user) {
+    return conn.reply(m.chat, `*[ ℹ️ ] Debe responder a un mensaje o mencionar a un usuario (@tag) para quitarle el admin.*`, m);
   }
-  if (!text && !m.quoted) return conn.reply(m.chat, `*[ ℹ️ ] Menciona a un usuario para quitar admin.*`, m);
-  if (number.length > 13 || (number.length < 11 && number.length > 0)) return conn.reply(m.chat, `*[ ⚠️ ] El usuario ingresado es incorrecto.*`, m);
+
   try {
-    if (text) {
-      var user = number + '@s.whatsapp.net';
-    } else if (m.quoted.sender) {
-      var user = m.quoted.sender;
-    } else if (m.mentionedJid) {
-      var user = number + '@s.whatsapp.net';
-    }
-  } catch (e) {
-  } finally {
     const groupMetadata = await conn.groupMetadata(m.chat);
+    
+    // Verificación de seguridad: No intentar degradar al creador del grupo
     if (user === groupMetadata.owner) {
-      return conn.reply(m.chat, `*[ ℹ️ ] No se puede degradar al creador del grupo.*`, m);
+      return conn.reply(m.chat, `*[ ⚠️ ] No se puede degradar al creador del grupo.*`, m);
     }
-    conn.groupParticipantsUpdate(m.chat, [user], 'demote');
-    conn.reply(m.chat, `*[ ✅ ] Usuario Degradado*`, m);
+
+    // Ejecutamos la acción de quitar admin (demote)
+    await conn.groupParticipantsUpdate(m.chat, [user], 'demote');
+    conn.reply(m.chat, `*[ ✅ ] Usuario degradado con éxito.*`, m);
+
+  } catch (e) {
+    console.error(e);
+    conn.reply(m.chat, `*[ ❎ ] Hubo un error al intentar quitar el admin.*`, m);
   }
 };
 
-handler.help = ['*<@tag>*'].map((v) => 'demote ' + v);
-handler.tags = ['gc'];
+handler.help = ['demote @tag'];
+handler.tags = ['grupo'];
 handler.command = /^(demote|quitarpoder|quitaradmin|quitarpija)$/i;
+
 handler.group = true;
 handler.admin = true;
 handler.botAdmin = true;
-//handler.fail = null;
+
 export default handler;
