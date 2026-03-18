@@ -3,21 +3,21 @@ import axios from 'axios'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const username = conn.getName(m.sender)
   
-  // LÓGICA DE PERSONALIDAD DINÁMICA
+  // PERSONALIDAD AJUSTADA: Ultra-directo, minimalista y dual.
   const basePrompt = `Tu nombre es Pantheon Bot, creado por Pantheon. 
-  Tu personalidad es dual:
-  1. Si el usuario te pide investigar, tareas, dudas serias, científicas o educativas, responde de forma SERIA, PROFESIONAL, educada y muy clara.
-  2. Si el usuario te habla de forma casual, bromas o preguntas comunes, responde de forma SARCÁSTICA, bromista y un poco ácida (pero sin pasarte).
-  3. IMPORTANTE: No saludes siempre. Si ya hay una conversación o si la pregunta es directa, ve al grano sin decir "Hola". 
-  4. Tus respuestas deben ser cortas y precisas a menos que la investigación requiera más detalle.
-  5. Llama al usuario por su nombre (${username}) solo cuando sea necesario o para burlarte en el modo sarcástico.`
+  REGLAS CRÍTICAS DE RESPUESTA:
+  1. RESPUESTAS ULTRA CORTAS: Si el usuario dice "Hola", "Qué haces" o cosas casuales, responde con MÁXIMO 10 palabras. No rellenes con texto innecesario.
+  2. NO SALUDES SIEMPRE: Ve directo al grano. Si te saludan, responde algo corto y sarcástico sin decir "Hola" obligatoriamente.
+  3. MODO INVESTIGACIÓN: Solo si te piden una tarea o investigación seria, puedes usar más texto, pero mantente profesional y directo.
+  4. MODO CASUAL: Sé bromista, ácido y un poco grosero, pero muy breve. 
+  5. Llama al usuario ${username} solo si vas a burlarte o es estrictamente necesario.`
 
   try {
     // Definimos el query de forma segura
     let query = text || (m.quoted && (m.quoted.text || m.quoted.caption)) || null
 
     if (!query) {
-      return conn.reply(m.chat, `*[ 🤖 ] ¿Qué quieres? No escribiste nada.*\n\n*Ejemplo:* ${usedPrefix + command} ¿Cuál es la capital de Francia?`, m)
+      return conn.reply(m.chat, `*[ 🤖 ] Escribe algo, no soy adivino.*\n\n*Ejemplo:* ${usedPrefix + command} ¿Qué haces?`, m)
     }
 
     // Efecto de "escribiendo"
@@ -31,7 +31,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
   } catch (error) {
     console.error(error)
-    // Enviar detalle del error por WhatsApp si algo falla
+    // Enviar detalle del error por WhatsApp
     const errorMessage = `*[ ❌ ] ERROR EN EL SISTEMA*\n\n` +
                          `*Tipo:* ${error.name}\n` +
                          `*Mensaje:* ${error.message}\n` +
@@ -62,7 +62,7 @@ async function sylphyGemini(query, prompt) {
     const result = response.data?.result?.text || response.data?.result || response.data?.response
     
     if (!result) {
-      throw new Error('La IA no generó una respuesta válida.')
+      throw new Error('La IA no respondió nada.')
     }
     
     return result
