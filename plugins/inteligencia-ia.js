@@ -3,7 +3,7 @@ import axios from 'axios'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const username = conn.getName(m.sender)
   
-  // Tu personalidad de Pantheon Bot
+  // Configuración de personalidad de Pantheon Bot
   const basePrompt = `Tu nombre es Pantheon Bot y fuiste creado por Pantheon. Eres Masculino. Llamarás a las personas por su nombre ${username}, eres divertido y usas emojis. Tus respuestas serán precisas, claras y sin barreras.`
 
   if (!text) return conn.reply(m.chat, `*[ 🤖 ] Ingrese su petición*\n\n*[ 💡 ] Ejemplo:* ${usedPrefix + command} ¿Quién eres?`, m)
@@ -11,29 +11,47 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
   await conn.sendPresenceUpdate('composing', m.chat)
 
   try {
-    // Usando endpoint de Lumine que es el reemplazo actual de las APIs caídas
-    const url = `https://api.lumine.my.id/v1/chat?prompt=${encodeURIComponent(text)}&system=${encodeURIComponent(basePrompt)}`
+    // Estructura de mensajes para la API de Amazon
+    const messages = [
+      { role: "system", content: basePrompt },
+      { role: "user", content: text }
+    ]
+
+    // Construcción de parámetros exactos: query (JSON) y link
+    const params = new URLSearchParams({
+      query: JSON.stringify(messages),
+      link: "writecream.com"
+    })
+
+    const url = `https://8pe3nv3qha.execute-api.us-east-1.amazonaws.com/default/llm_chat?${params.toString()}`
     
-    const { data } = await axios.get(url, { timeout: 15000 })
+    const { data } = await axios.get(url, { 
+      headers: { 'Accept': 'application/json' },
+      timeout: 15000 
+    })
     
-    // Extraemos la respuesta (ajustado a la estructura común de esta API)
-    const respuesta = data.result || data.response || data.content
-    
-    if (respuesta) {
-      await conn.reply(m.chat, respuesta, m)
+    // Esta API devuelve el contenido en 'response_content'
+    const respuesta = data.response_content
+
+    if (respuesta && respuesta !== "-") {
+      await conn.reply(m.chat, respuesta.trim(), m)
     } else {
-      throw new Error('Sin contenido')
+      throw new Error('Respuesta vacía de Amazon API')
     }
 
   } catch (error) {
-    console.error('Error en .pruebaia:', error.message)
+    console.error('Error en API Principal:', error.message)
     
-    // Intento de respaldo rápido (Skizo) por si Lumine satura
+    // RESPALDO (Fallback): Si la de Amazon falla, intenta con Skizo como tenías antes
     try {
       const fb = await axios.get(`https://api.skizo.tech/api/openai?apikey=drkbot&text=${encodeURIComponent(text)}&system=${encodeURIComponent(basePrompt)}`)
-      await conn.reply(m.chat, fb.data.result, m)
+      if (fb.data && fb.data.result) {
+        await conn.reply(m.chat, fb.data.result + "\n\n*(Nota: Usando motor de respaldo 🔄)*", m)
+      } else {
+        throw new Error('Fallo también el respaldo')
+      }
     } catch (e) {
-      await conn.reply(m.chat, '*❌ El servidor de IA no responde. Intenta con un texto más corto.*', m)
+      await conn.reply(m.chat, '*❌ Todos los servidores de IA están saturados. Intenta de nuevo en unos minutos.*', m)
     }
   }
 }
@@ -41,6 +59,6 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 handler.help = ['pruebaia']
 handler.tags = ['tools']
 handler.register = true
-handler.command = ['pruebaia'] // Único comando habilitado
+handler.command = ['pruebaia'] 
 
 export default handler
