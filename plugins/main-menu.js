@@ -65,7 +65,7 @@ ${readMore}
 ⠞🛍️੭‎ ${usedPrefix}combos
 ⠞🛍️੭‎ ${usedPrefix}setdiamantes *texto*
 ⠞🛍️੭‎ ${usedPrefix}diamantes
-⠞🛍️੭‎ ${usedPrefix}setfichareporte
+⠞🛍️੭‎ ${usedPrefix}setfichareporte *texto*
 ⠞🛍️੭‎ ${usedPrefix}fichareporte
 ⠞🛍️੭‎ ${usedPrefix}cambiar *texto*
 ⠞🛍️੭‎ ${usedPrefix}divisas
