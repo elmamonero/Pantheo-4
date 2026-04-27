@@ -9,8 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function getDownloader(wa) {
-  if (wa && typeof wa.downloadContentFromMessage === "function")
-    return wa.downloadContentFromMessage;
+  if (wa && typeof wa.downloadContentFromMessage === "function") return wa.downloadContentFromMessage;
   try {
     const m = await import("@whiskeysockets/baileys");
     return m.downloadContentFromMessage;
@@ -32,11 +31,11 @@ function getQuoted(msg) {
 }
 
 function parseCiclo(token) {
-  const m = String(token || "").trim().toLowerCase().match(/^(\d+)([mhd])$/);
+  const m = String(token || "").trim().toLowerCase().match(/^(\d+)([smhd])$/);
   if (!m) return null;
   const valor = parseInt(m[1], 10);
   const uni = m[2];
-  const ms = uni === "m" ? valor * 60 * 1000 : uni === "h" ? valor * 60 * 60 * 1000 : valor * 24 * 60 * 60 * 1000;
+  const ms = uni === "s" ? valor * 1000 : uni === "m" ? valor * 60 * 1000 : uni === "h" ? valor * 60 * 60 * 1000 : valor * 24 * 60 * 60 * 1000;
   return { valor, unidad: uni, ms, texto: `${valor}${uni}` };
 }
 
@@ -106,48 +105,48 @@ async function generarFacturaPNG({ logoUrl, datos }) {
   ctx.strokeStyle = "#10b981"; ctx.lineWidth = 6; ctx.strokeRect(-10, -40, 240, 80);
   ctx.fillStyle = "#10b981"; ctx.font = "bold 28px Sans-Serif"; ctx.fillText("PAGO EXITOSO", 8, 10);
   ctx.restore();
-  ctx.fillStyle = "#6b7280"; ctx.font = "14px Sans-Serif";
-  ctx.fillText("Gracias por su pago. Esta es la confirmación de su ciclo actual.", 40, H - 30);
   return canvas.toBuffer("image/png");
 }
 
-// AQUÍ ESTÁ EL CAMBIO PRINCIPAL: Añadimos isOwner y rowner a los parámetros
 const handler = async (msg, { conn, args, command, wa, isOwner, rowner }) => {
   const chatId = msg.key.remoteJid;
 
-  // Verificación simplificada compatible con tu bot
   if (!isOwner && !rowner) {
-    await conn.sendMessage(chatId, { react: { text: "❌", key: msg.key } });
     return conn.sendMessage(chatId, { text: "🚫 Solo los owners pueden usar este comando." }, { quoted: msg });
   }
 
+  // Si faltan argumentos, mostramos el error detallado
   if (args.length < 7) {
     return conn.sendMessage(chatId, {
-      text: `✳️ *Uso correcto:*
-.${command} <numCliente> <numVendedor> <servicio> <precio> <nombreCliente> <nombreVendedor> <ciclo>
-
-📌 Ejemplo:
-.${command} 50784747474 52184848485 netflix 2.99 raul felipe 1d`
+      text: `❌ *Faltan datos.* Se recibieron ${args.length} de 7 parámetros.\n\n📌 *Uso:* .${command} <numCliente> <numVendedor> <servicio> <precio> <nombreCliente> <nombreVendedor> <ciclo>`
     }, { quoted: msg });
   }
 
   const numCliente = limpiarNumero(args[0]);
   const numVendedor = limpiarNumero(args[1]);
-  const servicio = String(args[2]).trim();
-  const precio = parseFloat(args[3]);
-  const nombreCliente = String(args[4]).replace(/_/g, " ").trim();
-  const nombreVendedor = String(args[5]).replace(/_/g, " ").trim();
+  const servicio = args[2];
+  const precioRaw = args[3].replace(',', '.'); // Acepta comas decimales
+  const precio = parseFloat(precioRaw);
+  const nombreCliente = args[4].replace(/_/g, " ");
+  const nombreVendedor = args[5].replace(/_/g, " ");
   const cicloParsed = parseCiclo(args[6]);
 
-  if (!numCliente || !numVendedor || !servicio || isNaN(precio) || !cicloParsed) {
-    return conn.sendMessage(chatId, { text: "❌ Parámetros inválidos." }, { quoted: msg });
+  // Debug en caso de fallo en validación interna
+  if (!numCliente || !numVendedor || isNaN(precio) || !cicloParsed) {
+     let debug = `❌ *Error de validación:*\n`;
+     if (!numCliente) debug += `- Número cliente inválido\n`;
+     if (!numVendedor) debug += `- Número vendedor inválido\n`;
+     if (isNaN(precio)) debug += `- Precio (${args[3]}) no es un número\n`;
+     if (!cicloParsed) debug += `- Ciclo (${args[6]}) inválido (usa s, m, h, d)\n`;
+     return conn.sendMessage(chatId, { text: debug }, { quoted: msg });
   }
+
+  await conn.sendMessage(chatId, { react: { text: "⏳", key: msg.key } });
 
   let logoUrl;
   try {
     logoUrl = await subirLogoDesdeCita(msg, wa);
   } catch (e) {
-    await conn.sendMessage(chatId, { react: { text: "❌", key: msg.key } });
     return conn.sendMessage(chatId, { text: `❌ ${e.message}` }, { quoted: msg });
   }
 
@@ -155,31 +154,26 @@ const handler = async (msg, { conn, args, command, wa, isOwner, rowner }) => {
   const fechaProximoPago = fechaCreacion + cicloParsed.ms;
 
   const facturaData = {
-    id: `FAC-${Date.now()}`,
     servicio,
-    precio: Number(precio),
+    precio,
     ciclo: cicloParsed,
     fechaCreacion,
     fechaProximoPago,
     cliente: { numero: numCliente, nombre: nombreCliente },
-    vendedor: { numero: numVendedor, nombre: nombreVendedor },
-    logoUrl
+    vendedor: { numero: numVendedor, nombre: nombreVendedor }
   };
 
-  let buffer = await generarFacturaPNG({ logoUrl, datos: facturaData });
-  const caption = `🧾 *Factura generada*\n📄 ID: ${facturaData.id}\n🛠 Servicio: ${servicio}\n💵 Precio: $ ${precio.toFixed(2)}\n🔁 Ciclo: ${cicloParsed.texto}\n👤 Cliente: ${nombreCliente}\n🏪 Vendedor: ${nombreVendedor}`;
-
-  const safeSend = async (jid) => {
-    try { await conn.sendMessage(jid, { image: buffer, caption }); } catch (e) {}
-  };
-
-  await safeSend(chatId);
-  await safeSend(`${numCliente}@s.whatsapp.net`);
-  await safeSend(`${numVendedor}@s.whatsapp.net`);
-
-  await conn.sendMessage(chatId, { react: { text: "✅", key: msg.key } });
+  try {
+    const buffer = await generarFacturaPNG({ logoUrl, datos: facturaData });
+    const caption = `🧾 *Factura generada con éxito*\n🛠 Servicio: ${servicio}\n💵 Precio: $ ${precio.toFixed(2)}\n🔁 Ciclo: ${cicloParsed.texto}\n👤 Cliente: ${nombreCliente}\n🏪 Vendedor: ${nombreVendedor}`;
+    
+    await conn.sendMessage(chatId, { image: buffer, caption }, { quoted: msg });
+  } catch (e) {
+    return conn.sendMessage(chatId, { text: `❌ Error al crear imagen: ${e.message}` }, { quoted: msg });
+  }
 };
 
 handler.command = ["addfactura"];
-handler.owner = true; // Esto le dice a tu bot que solo el owner puede verlo
+handler.owner = true;
+
 export default handler;
