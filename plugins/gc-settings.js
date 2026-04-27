@@ -5,19 +5,19 @@ let handler = async (m, { conn, args, usedPrefix, command }) => {
     }[(args[0] || '').toLowerCase()];
 
     if (isClose === undefined) {
-        return await conn.reply(m.chat, `*🔐 Elige una opción.*\n\n*${usedPrefix + command}* abrir\n*${usedPrefix + command}* cerrar`, m, rcanal);
+        // Se eliminó 'rcanal' para que no salga el enlace al canal
+        return await conn.reply(m.chat, `*🔐 Elige una opción.*\n\n*${usedPrefix + command}* abrir\n*${usedPrefix + command}* cerrar`, m);
     }
 
     try {
-        console.log('Intentando cambiar configuración:', isClose);
-        console.log('ID del grupo:', m.chat);
         await conn.groupSettingUpdate(m.chat, isClose);
-        // Sin confirmación adicional
+        // El bot realizará la acción sin enviar mensajes adicionales de confirmación
     } catch (err) {
         console.error('Error en groupSettingUpdate:', err);
         await conn.reply(m.chat, `⚠️ Error al actualizar la configuración del grupo: ${err.message || err}`, m);
     }
 };
+
 handler.help = ['group *<abrir/cerrar>*'];
 handler.tags = ['gc'];
 handler.command = ['group', 'grupo'];
