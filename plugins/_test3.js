@@ -5,7 +5,7 @@ import { createCanvas, loadImage } from "canvas";
 import FormData from "form-data";
 import axios from "axios";
 
-// Configuración para emular __dirname en ESM
+// Configuración paara emular __dirname en ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
