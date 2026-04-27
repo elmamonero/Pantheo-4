@@ -1,116 +1,81 @@
-import axios from 'axios'
-import fetch from 'node-fetch'
+const fs = require("fs");
+const path = require("path");
 
-let handler = async (m, { conn, text, usedPrefix, command }) => {
+const handler = async (msg, { conn, args }) => {
+  const chatId = msg.key.remoteJid;
+  const senderId = msg.key.participant || msg.key.remoteJid;
+  const senderClean = senderId.replace(/[^0-9]/g, "");
+  const isGroup = chatId.endsWith("@g.us");
 
-    if (!text) return conn.reply(m.chat, `❀ Por favor, proporciona el nombre de una canción o artista.`, m)
+  if (!isGroup) {
+    await conn.sendMessage(chatId, {
+      text: "❌ Este comando solo puede usarse en grupos."
+    }, { quoted: msg });
+    return;
+  }
 
-    try {
-        let songInfo = await spotifyxv(text)
-        if (!songInfo.length) throw `✧ No se encontró la canción.`
-        let song = songInfo[0]
-        const res = await fetch(`https://api.sylphy.xyz/download/spotify?url=${song.url}&apikey=sylph-96ccb836bc`)
+  const metadata = await conn.groupMetadata(chatId);
+  const participante = metadata.participants.find(p => p.id === senderId);
+  const isAdmin = participante?.admin === "admin" || participante?.admin === "superadmin";
+  const isOwner = global.owner.some(([id]) => id === senderClean);
+  const isFromMe = msg.key.fromMe;
 
-        if (!res.ok) throw `Error al obtener datos de la API, código de estado: ${res.status}`
+  if (!isAdmin && !isOwner && !isFromMe) {
+    await conn.sendMessage(chatId, {
+      text: "🚫 Solo administradores o owners pueden usar este comando."
+    }, { quoted: msg });
+    return;
+  }
 
-        const data = await res.json().catch((e) => { 
-            console.error('Error parsing JSON:', e)
-            throw "Error al analizar la respuesta JSON."
-        })
+  if (!args[0]) {
+    await conn.sendMessage(chatId, {
+      text: "⚙️ Usa: *abrir 10s*, *abrir 10m* o *abrir 1h* para programar la apertura automática."
+    }, { quoted: msg });
+    return;
+  }
 
-        if (!data.data.dl_url) throw "No se pudo obtener el enlace de descarga."
-        const info = `「❑」Descargando *<${data.data.title}>*\n\n> 👤 Artista » *${data.data.artist}*\n> 🎬 Album » *${data.data.album}*\n> ⏳ Duracion » *${data.data.duration}*\n> 🖇️ Link » ${song.url}`
+  const match = args[0].match(/^(\d+)([smh])$/i);
+  if (!match) {
+    await conn.sendMessage(chatId, {
+      text: "❌ Formato incorrecto. Usa: *abrir 10s*, *abrir 10m* o *abrir 1h*."
+    }, { quoted: msg });
+    return;
+  }
 
-        await conn.sendMessage(m.chat, { text: info, contextInfo: { forwardingScore: 9999999, isForwarded: false, 
-        externalAdReply: {
-            showAdAttribution: true,
-            containsAutoReply: true,
-            renderLargerThumbnail: true,
-            title: botname,
-            body: dev,
-            mediaType: 1,
-            thumbnailUrl: data.data.img,
-            mediaUrl: song.url,
-            sourceUrl: song.url
-        }}}, { quoted: m })
+  const amount = parseInt(match[1]);
+  const unit = match[2].toLowerCase();
+  let milliseconds = 0;
 
-        conn.sendMessage(m.chat, { audio: { url: data.data.dl_url }, fileName: `${data.data.title}.mp3`, mimetype: 'audio/mp4', ptt: true }, { quoted: m })
+  if (unit === "s") milliseconds = amount * 1000;
+  else if (unit === "m") milliseconds = amount * 60 * 1000;
+  else if (unit === "h") milliseconds = amount * 60 * 60 * 1000;
+  else milliseconds = 0;
 
-    } catch (e1) {
-        m.reply(`${e1.message || e1}`)
-    }
-}
-handler.help = ['spotify', 'music']
-handler.tags = ['downloader']
-handler.command = ['spotify55', 'splay']
-handler.group = true
+  if (milliseconds <= 0) {
+    await conn.sendMessage(chatId, {
+      text: "❌ Tiempo inválido."
+    }, { quoted: msg });
+    return;
+  }
 
-export default handler
+  const tiempoPath = path.resolve("./tiempo2.json");
+  if (!fs.existsSync(tiempoPath)) {
+    fs.writeFileSync(tiempoPath, JSON.stringify({}, null, 2));
+  }
 
-async function spotifyxv(query) {
-    let token = await tokens()
-    let response = await axios({
-        method: 'get',
-        url: 'https://api.spotify.com/v1/search?q=' + query + '&type=track',
-        headers: {
-            Authorization: 'Bearer ' + token
-        }
-    })
-    const tracks = response.data.tracks.items
-    const results = tracks.map((track) => ({
-        name: track.name,
-        artista: track.artists.map((artist) => artist.name),
-        album: track.album.name,
-        duracion: timestamp(track.duration_ms),
-        url: track.external_urls.spotify,
-        imagen: track.album.images.length ? track.album.images[0].url : ''
-    }))
-    return results
-}
+  const tiempoData = JSON.parse(fs.readFileSync(tiempoPath, "utf-8"));
+  const ahora = Date.now();
+  tiempoData[chatId] = ahora + milliseconds;
+  fs.writeFileSync(tiempoPath, JSON.stringify(tiempoData, null, 2));
 
-async function tokens() {
-    const response = await axios({
-        method: 'post',
-        url: 'https://accounts.spotify.com/api/token',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Authorization: 'Basic ' + Buffer.from('acc6302297e040aeb6e4ac1fbdfd62c3:0e8439a1280a43aba9a5bc0a16f3f009').toString('base64')
-        },
-        data: 'grant_type=client_credentials'
-    })
-    return response.data.access_token
-}
+  await conn.sendMessage(chatId, {
+    text: `⏳ Grupo programado para abrirse automáticamente en *${amount}${unit}*.`
+  }, { quoted: msg });
 
-function timestamp(time) {
-    const minutes = Math.floor(time / 60000)
-    const seconds = Math.floor((time % 60000) / 1000)
-    return minutes + ':' + (seconds < 10 ? '0' : '') + seconds
-}
+  await conn.sendMessage(chatId, {
+    react: { text: "✅", key: msg.key }
+  });
+};
 
-async function getBuffer(url, options) {
-    try {
-        options = options || {}
-        const res = await axios({
-            method: 'get',
-            url,
-            headers: {
-                DNT: 1,
-                'Upgrade-Insecure-Request': 1
-            },
-            ...options,
-            responseType: 'arraybuffer'
-        })
-        return res.data
-    } catch (err) {
-        return err
-    }
-}
-
-async function getTinyURL(text) {
-    try {
-        let response = await axios.get(`https://tinyurl.com/api-create.php?url=${text}`)
-        return response.data
-    } catch (error) {
-        return text
-    }
-}
+handler.command = ["pruebaabrir"];
+module.exports = handler;
