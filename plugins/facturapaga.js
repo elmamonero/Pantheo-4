@@ -2,14 +2,13 @@ import fs from "fs";
 import path from "path";
 import { createCanvas, loadImage } from "canvas";
 
-// Almacén global de cronómetros
 if (!global.facturaTimeouts) global.facturaTimeouts = {};
 
 const limpiarNumero = n => String(n || "").replace(/\D/g, "");
 
 function formatFecha(ts) {
   const d = new Date(ts);
-  return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function parseCiclo(token) {
@@ -40,7 +39,8 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
   ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Sans-Serif";
   ctx.fillText("FACTURA • PAGO EXITOSO", 140, 55);
   ctx.font = "16px Sans-Serif";
-  ctx.fillText(`Renovación sumada: ${formatFecha(Date.now())}`, 140, 85);
+  // MOSTRAR EL NUEVO VENCIMIENTO SUMADO EN LA CABECERA
+  ctx.fillText(`Nuevo Vencimiento: ${formatFecha(datos.fechaVencimiento)}`, 140, 85);
 
   const boxX = 40, boxY = 150, boxW = W - 80, boxH = 360;
   ctx.fillStyle = "#f3f4f6"; ctx.fillRect(boxX, boxY, boxW, boxH);
@@ -52,7 +52,7 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
   ctx.fillText(`SERVICIO: ${datos.servicio.toUpperCase()}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`PRECIO: $ ${Number(datos.precio).toFixed(2)}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`CICLO AÑADIDO: ${datos.ciclo.texto}`, boxX + 20, yy); yy += 35;
-  ctx.fillText(`NUEVO VENCIMIENTO: ${formatFecha(datos.fechaVencimiento)}`, boxX + 20, yy);
+  ctx.fillText(`FECHA FINAL: ${formatFecha(datos.fechaVencimiento)}`, boxX + 20, yy);
   yy += 50;
   ctx.font = "bold 20px Sans-Serif";
   ctx.fillText("Cliente", boxX + 20, yy);
@@ -96,7 +96,6 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   db.facturas[fIdx] = f;
   fs.writeFileSync(filePath, JSON.stringify(db, null, 2));
 
-  // --- MATAR ALARMA ANTERIOR ---
   if (global.facturaTimeouts[f.id]) {
     clearTimeout(global.facturaTimeouts[f.id]);
     delete global.facturaTimeouts[f.id];
@@ -107,7 +106,7 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   try {
     const buffer = await generarFacturaPagaPNG({ logoUrl: f.logoUrl, datos: f });
     const restanteMs = f.fechaVencimiento - ahora;
-    await conn.sendMessage(chatId, { image: buffer, caption: `🧾 *RENOVACIÓN SUMADA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🗓 *Vence:* ${formatFecha(f.fechaVencimiento)}` }, { quoted: msg });
+    await conn.sendMessage(chatId, { image: buffer, caption: `🧾 *RENOVACIÓN SUMADA*\n\n📄 *ID:* ${f.id}\n🗓 *Nuevo Vencimiento:* ${formatFecha(f.fechaVencimiento)}` }, { quoted: msg });
 
     global.facturaTimeouts[f.id] = setTimeout(async () => {
       await conn.sendMessage(chatId, { text: `⏰ *AVISO DE VENCIMIENTO*\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* (${f.cliente.numero}) ha vencido hoy.\n📄 *ID:* ${f.id}` });
