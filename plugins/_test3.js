@@ -8,7 +8,7 @@ import axios from "axios";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// --- FUNCIONES DE UTILIDAD ---
+// --- UTILIDADES ---
 async function getDownloader(wa) {
   if (wa && typeof wa.downloadContentFromMessage === "function") return wa.downloadContentFromMessage;
   try {
@@ -40,6 +40,8 @@ function parseCiclo(token) {
   return { valor, unidad: uni, ms: valor * mult[uni], texto: `${valor}${uni}` };
 }
 
+const limpiarNumero = n => String(n || "").replace(/\D/g, "");
+
 function formatFecha(ts) {
   const d = new Date(ts);
   return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -47,7 +49,7 @@ function formatFecha(ts) {
 
 async function subirLogoDesdeCita(msg, wa) {
   const quoted = getQuoted(msg);
-  if (!quoted?.imageMessage) return null; // Si no hay imagen, devolvemos null en lugar de error
+  if (!quoted?.imageMessage) return null; 
   const DL = await getDownloader(wa);
   const stream = await DL(quoted.imageMessage, "image");
   const tmpPath = path.join(process.cwd(), "tmp", `${Date.now()}_logo.jpg`);
@@ -63,7 +65,7 @@ async function subirLogoDesdeCita(msg, wa) {
   return res.data.url;
 }
 
-// --- GENERADOR DE IMAGEN (DISEÑO ORIGINAL) ---
+// --- GENERADOR DE IMAGEN ---
 async function generarFacturaPNG({ logoUrl, datos }) {
   const W = 1100, H = 650;
   const canvas = createCanvas(W, H);
@@ -90,19 +92,25 @@ async function generarFacturaPNG({ logoUrl, datos }) {
 
   const boxX = 40, boxY = 150, boxW = W - 80, boxH = 360;
   ctx.fillStyle = "#f3f4f6"; ctx.fillRect(boxX, boxY, boxW, boxH);
-  
   ctx.fillStyle = "#111827"; ctx.font = "bold 24px Sans-Serif";
   ctx.fillText("Detalle de la Factura", boxX + 20, boxY + 40);
   
   ctx.font = "18px Sans-Serif";
   let yy = boxY + 80;
   ctx.fillText(`ID FACTURA: ${datos.id}`, boxX + 20, yy); yy += 35;
-  ctx.fillText(`SERVICIO: ${datos.servicio}`, boxX + 20, yy); yy += 35;
+  ctx.fillText(`SERVICIO: ${datos.servicio.toUpperCase()}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`PRECIO: $ ${datos.precio.toFixed(2)}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`CICLO: cada ${datos.ciclo.texto}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`PRÓXIMO PAGO: ${formatFecha(datos.fechaVencimiento)}`, boxX + 20, yy);
 
-  // Sello de Pago Exitoso
+  yy += 50;
+  ctx.font = "bold 20px Sans-Serif";
+  ctx.fillText("Cliente", boxX + 20, yy);
+  ctx.fillText("Vendedor", boxX + boxW / 2, yy); yy += 30;
+  ctx.font = "18px Sans-Serif";
+  ctx.fillText(`${datos.cliente.nombre} (${datos.cliente.numero})`, boxX + 20, yy);
+  ctx.fillText(`${datos.vendedor.nombre} (${datos.vendedor.numero})`, boxX + boxW / 2, yy);
+
   ctx.save();
   ctx.translate(W - 260, boxY + 120); ctx.rotate(-Math.PI / 12);
   ctx.strokeStyle = "#10b981"; ctx.lineWidth = 6; ctx.strokeRect(-10, -40, 240, 80);
@@ -120,14 +128,15 @@ const handler = async (msg, { conn, args, command, isOwner, rowner, wa }) => {
     return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <numCliente> <numVendedor> <servicio> <precio> <nombre> <vendedorNombre> <ciclo>` });
   }
 
+  const numCliente = limpiarNumero(args[0]);
+  const numVendedor = limpiarNumero(args[1]);
   const servicio = args[2];
   const precio = parseFloat(args[3].replace(',', '.'));
   const nombreCliente = args[4].replace(/_/g, " ");
+  const nombreVendedor = args[5].replace(/_/g, " ");
   const cicloParsed = parseCiclo(args[6]);
 
-  if (!cicloParsed || isNaN(precio)) {
-    return conn.sendMessage(chatId, { text: "❌ Datos inválidos. Revisa el precio y el ciclo (ej: 10s, 1d, 1M)." });
-  }
+  if (!cicloParsed || isNaN(precio)) return conn.sendMessage(chatId, { text: "❌ Revisa el precio o el ciclo." });
 
   await conn.sendMessage(chatId, { react: { text: "⏳", key: msg.key } });
 
@@ -137,26 +146,34 @@ const handler = async (msg, { conn, args, command, isOwner, rowner, wa }) => {
     const ahora = Date.now();
     const vence = ahora + cicloParsed.ms;
 
-    const buffer = await generarFacturaPNG({
-      logoUrl,
-      datos: {
-        id: idFactura,
-        servicio,
-        precio,
-        ciclo: cicloParsed,
-        fechaCreacion: ahora,
-        fechaVencimiento: vence
-      }
-    });
+    const datosFactura = {
+      id: idFactura,
+      servicio,
+      precio,
+      ciclo: cicloParsed,
+      fechaCreacion: ahora,
+      fechaVencimiento: vence,
+      cliente: { nombre: nombreCliente, numero: numCliente },
+      vendedor: { nombre: nombreVendedor, numero: numVendedor },
+      logoUrl: logoUrl
+    };
 
-    const caption = `🧾 *FACTURA GENERADA*\n\n📄 *ID:* ${idFactura}\n🛠 *Servicio:* ${servicio}\n👤 *Cliente:* ${nombreCliente}\n🔁 *Ciclo:* ${cicloParsed.texto}\n\n_El bot te avisará aquí cuando el tiempo expire._`;
+    // Guardar en JSON para que facturapaga pueda encontrarlo después
+    const filePath = path.join(process.cwd(), "facturas.json");
+    let db = { facturas: [] };
+    if (fs.existsSync(filePath)) db = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    db.facturas.push(datosFactura);
+    fs.writeFileSync(filePath, JSON.stringify(db, null, 2));
+
+    const buffer = await generarFacturaPNG({ logoUrl, datos: datosFactura });
+
+    const caption = `🧾 *FACTURA GENERADA*\n\n📄 *ID:* ${idFactura}\n🛠 *Servicio:* ${servicio}\n👤 *Cliente:* ${nombreCliente} (${numCliente})\n🏪 *Vendedor:* ${nombreVendedor} (${numVendedor})\n🔁 *Ciclo:* ${cicloParsed.texto}\n\n_El bot avisará al vencer._`;
 
     await conn.sendMessage(chatId, { image: buffer, caption }, { quoted: msg });
 
-    // --- TEMPORIZADOR AISLADO ---
+    // Temporizador independiente
     setTimeout(async () => {
-      const aviso = `⏰ *AVISO DE VENCIMIENTO* ⏰\n\nEl servicio de *${servicio}* ha vencido.\n\n👤 *Cliente:* ${nombreCliente}\n📄 *ID Factura:* ${idFactura}\n💰 *Precio:* $${precio.toFixed(2)}\n\n_Ya puedes proceder a avisar al cliente manualmente._`;
-      
+      const aviso = `⏰ *AVISO DE VENCIMIENTO* ⏰\n\nEl servicio *${servicio}* ha vencido.\n\n👤 *Cliente:* ${nombreCliente} (${numCliente})\n📄 *ID Factura:* ${idFactura}\n💰 *Precio:* $${precio.toFixed(2)}\n\n_Ya puedes avisar al cliente manualmente._`;
       await conn.sendMessage(chatId, { text: aviso });
     }, cicloParsed.ms);
 
