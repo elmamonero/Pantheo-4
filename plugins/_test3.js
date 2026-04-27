@@ -43,14 +43,14 @@ const limpiarNumero = n => String(n || "").replace(/\D/g, "");
 
 function formatFecha(ts) {
   const d = new Date(ts);
-  return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 async function subirLogoDesdeCita(msg, wa) {
   const quoted = getQuoted(msg);
-  if (!quoted?.imageMessage) throw new Error("Debes *responder a una imagen* que será usada como logo.");
+  if (!quoted?.imageMessage) throw new Error("Debes *responder a una imagen* para el logo.");
   const DL = await getDownloader(wa);
-  if (!DL) throw new Error("No puedo descargar la imagen.");
+  if (!DL) throw new Error("Error al descargar imagen.");
   const stream = await DL(quoted.imageMessage, "image");
   const tmpDir = path.join(process.cwd(), "tmp");
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
@@ -63,7 +63,6 @@ async function subirLogoDesdeCita(msg, wa) {
   form.append("file", fs.createReadStream(tmpPath));
   const res = await axios.post("https://cdn.russellxz.click/upload.php", form, { headers: { ...form.getHeaders() } });
   if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-  if (!res.data?.url) throw new Error("No se pudo subir el logo.");
   return res.data.url;
 }
 
@@ -111,65 +110,69 @@ async function generarFacturaPNG({ logoUrl, datos }) {
 const handler = async (msg, { conn, args, command, wa, isOwner, rowner }) => {
   const chatId = msg.key.remoteJid;
 
-  if (!isOwner && !rowner) {
-    return conn.sendMessage(chatId, { text: "🚫 Solo los owners pueden usar este comando." }, { quoted: msg });
-  }
+  if (!isOwner && !rowner) return;
 
-  // Si faltan argumentos, mostramos el error detallado
   if (args.length < 7) {
-    return conn.sendMessage(chatId, {
-      text: `❌ *Faltan datos.* Se recibieron ${args.length} de 7 parámetros.\n\n📌 *Uso:* .${command} <numCliente> <numVendedor> <servicio> <precio> <nombreCliente> <nombreVendedor> <ciclo>`
-    }, { quoted: msg });
+    return conn.sendMessage(chatId, { text: `❌ *Uso:* .${command} <numCliente> <numVendedor> <servicio> <precio> <nombreCliente> <nombreVendedor> <ciclo>` }, { quoted: msg });
   }
 
   const numCliente = limpiarNumero(args[0]);
   const numVendedor = limpiarNumero(args[1]);
   const servicio = args[2];
-  const precioRaw = args[3].replace(',', '.'); // Acepta comas decimales
-  const precio = parseFloat(precioRaw);
+  const precio = parseFloat(args[3].replace(',', '.'));
   const nombreCliente = args[4].replace(/_/g, " ");
   const nombreVendedor = args[5].replace(/_/g, " ");
   const cicloParsed = parseCiclo(args[6]);
 
-  // Debug en caso de fallo en validación interna
   if (!numCliente || !numVendedor || isNaN(precio) || !cicloParsed) {
-     let debug = `❌ *Error de validación:*\n`;
-     if (!numCliente) debug += `- Número cliente inválido\n`;
-     if (!numVendedor) debug += `- Número vendedor inválido\n`;
-     if (isNaN(precio)) debug += `- Precio (${args[3]}) no es un número\n`;
-     if (!cicloParsed) debug += `- Ciclo (${args[6]}) inválido (usa s, m, h, d)\n`;
-     return conn.sendMessage(chatId, { text: debug }, { quoted: msg });
+     return conn.sendMessage(chatId, { text: "❌ Datos inválidos. Verifica el precio y el ciclo (ej: 10s, 1m, 1d)." }, { quoted: msg });
   }
 
   await conn.sendMessage(chatId, { react: { text: "⏳", key: msg.key } });
 
-  let logoUrl;
   try {
-    logoUrl = await subirLogoDesdeCita(msg, wa);
-  } catch (e) {
-    return conn.sendMessage(chatId, { text: `❌ ${e.message}` }, { quoted: msg });
-  }
+    const logoUrl = await subirLogoDesdeCita(msg, wa);
+    const fechaCreacion = Date.now();
+    const fechaProximoPago = fechaCreacion + cicloParsed.ms;
+    const idFactura = `FAC-${Date.now().toString().slice(-6)}`;
 
-  const fechaCreacion = Date.now();
-  const fechaProximoPago = fechaCreacion + cicloParsed.ms;
+    const facturaData = {
+      id: idFactura,
+      servicio,
+      precio,
+      ciclo: cicloParsed,
+      fechaCreacion,
+      fechaProximoPago,
+      cliente: { numero: numCliente, nombre: nombreCliente },
+      vendedor: { numero: numVendedor, nombre: nombreVendedor }
+    };
 
-  const facturaData = {
-    servicio,
-    precio,
-    ciclo: cicloParsed,
-    fechaCreacion,
-    fechaProximoPago,
-    cliente: { numero: numCliente, nombre: nombreCliente },
-    vendedor: { numero: numVendedor, nombre: nombreVendedor }
-  };
-
-  try {
     const buffer = await generarFacturaPNG({ logoUrl, datos: facturaData });
-    const caption = `🧾 *Factura generada con éxito*\n🛠 Servicio: ${servicio}\n💵 Precio: $ ${precio.toFixed(2)}\n🔁 Ciclo: ${cicloParsed.texto}\n👤 Cliente: ${nombreCliente}\n🏪 Vendedor: ${nombreVendedor}`;
+    const caption = `🧾 *FACTURA GENERADA*\n\n📄 *ID:* ${idFactura}\n🛠 *Servicio:* ${servicio}\n💵 *Precio:* $${precio.toFixed(2)}\n🔁 *Duración:* ${cicloParsed.texto}\n👤 *Cliente:* ${nombreCliente}\n\n_Se enviará una notificación al vencer._`;
     
     await conn.sendMessage(chatId, { image: buffer, caption }, { quoted: msg });
+
+    // --- LÓGICA DE TEMPORIZADOR ---
+    if (cicloParsed.ms > 0) {
+      setTimeout(async () => {
+        const mensajeVencimiento = `⏰ *AVISO DE VENCIMIENTO* ⏰\n\nEl servicio de *${servicio}* para el cliente *${nombreCliente}* ha finalizado.\n\n📄 *Factura:* ${idFactura}\n💰 *Precio a renovar:* $${precio.toFixed(2)}`;
+        
+        // Avisar en el chat donde se creó
+        await conn.sendMessage(chatId, { text: mensajeVencimiento });
+
+        // Avisar al cliente por privado
+        try {
+          await conn.sendMessage(`${numCliente}@s.whatsapp.net`, { 
+            text: `Hola *${nombreCliente}*, tu servicio de *${servicio}* ha vencido hoy. 📢\n\nSi deseas renovar, contacta a tu vendedor: *${nombreVendedor}*.` 
+          });
+        } catch (e) {
+          console.log("No se pudo enviar mensaje privado al cliente.");
+        }
+      }, cicloParsed.ms);
+    }
+
   } catch (e) {
-    return conn.sendMessage(chatId, { text: `❌ Error al crear imagen: ${e.message}` }, { quoted: msg });
+    await conn.sendMessage(chatId, { text: `❌ Error: ${e.message}` }, { quoted: msg });
   }
 };
 
