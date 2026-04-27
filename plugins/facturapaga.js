@@ -10,6 +10,15 @@ function formatFecha(ts) {
   return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function parseCiclo(token) {
+  const m = String(token || "").trim().match(/^(\d+)([smhdM])$/);
+  if (!m) return null;
+  const valor = parseInt(m[1], 10);
+  const uni = m[2];
+  const mult = { 's': 1000, 'm': 60000, 'h': 3600000, 'd': 86400000, 'M': 2592000000 };
+  return { valor, unidad: uni, ms: valor * mult[uni], texto: `${valor}${uni}` };
+}
+
 async function generarFacturaPagaPNG({ logoUrl, datos }) {
   const W = 1100, H = 650;
   const canvas = createCanvas(W, H);
@@ -44,7 +53,8 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
   ctx.fillText(`ID FACTURA: ${datos.id}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`SERVICIO: ${datos.servicio.toUpperCase()}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`PRECIO: $ ${Number(datos.precio).toFixed(2)}`, boxX + 20, yy); yy += 35;
-  ctx.fillText(`PRÓXIMO PAGO: ${formatFecha(datos.fechaProximoPago)}`, boxX + 20, yy);
+  ctx.fillText(`CICLO: cada ${datos.ciclo.texto}`, boxX + 20, yy); yy += 35;
+  ctx.fillText(`PRÓXIMO PAGO: ${formatFecha(datos.fechaVencimiento)}`, boxX + 20, yy);
   
   yy += 50;
   ctx.font = "bold 20px Sans-Serif";
@@ -54,7 +64,6 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
   ctx.fillText(`${datos.cliente.nombre} (${datos.cliente.numero})`, boxX + 20, yy);
   ctx.fillText(`${datos.vendedor.nombre} (${datos.vendedor.numero})`, boxX + boxW / 2, yy);
 
-  // Sello
   ctx.save();
   ctx.translate(W - 260, boxY + 120); ctx.rotate(-Math.PI / 12);
   ctx.strokeStyle = "#10b981"; ctx.lineWidth = 6; ctx.strokeRect(-10, -40, 240, 80);
@@ -65,39 +74,40 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
 }
 
 const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
-  const chatId = msg.key.remoteJid;
-  
-  // Verificación de Dueño
   if (!isOwner && !rowner) return;
 
-  if (args.length < 2) {
-    return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <numeroCliente> <servicio>\n\nEjemplo: .${command} 584241234567 netflix` }, { quoted: msg });
+  const chatId = msg.key.remoteJid;
+
+  if (args.length < 1) {
+    return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <ID-FACTURA> <nuevoCiclo(opcional)>\n\nEjemplo (Mismo ciclo): .${command} FAC-123456\nEjemplo (Cambiar ciclo): .${command} FAC-123456 1M` }, { quoted: msg });
   }
 
-  const numeroCliente = limpiarNumero(args[0]);
-  const servicioBusqueda = args.slice(1).join(" ").toLowerCase().trim();
+  const idBusqueda = args[0].toUpperCase().trim();
+  const nuevoCicloRaw = args[1]; // Opcional
   const filePath = path.join(process.cwd(), "facturas.json");
 
-  if (!fs.existsSync(filePath)) return conn.sendMessage(chatId, { text: "📂 No hay base de datos de facturas aún." });
+  if (!fs.existsSync(filePath)) return conn.sendMessage(chatId, { text: "📂 No hay base de datos de facturas." });
 
   let db = JSON.parse(fs.readFileSync(filePath, "utf8"));
   const facturas = Array.isArray(db.facturas) ? db.facturas : [];
 
-  // Buscar factura existente
-  const fIdx = facturas.findIndex(f => 
-    limpiarNumero(f.cliente?.numero) === numeroCliente && 
-    f.servicio.toLowerCase().trim() === servicioBusqueda
-  );
+  const fIdx = facturas.findIndex(f => f.id === idBusqueda);
 
-  if (fIdx === -1) return conn.sendMessage(chatId, { text: `🔎 No encontré facturas para el número *${numeroCliente}* con el servicio *${servicioBusqueda}*.` });
+  if (fIdx === -1) return conn.sendMessage(chatId, { text: `🔎 No encontré ninguna factura con el ID *${idBusqueda}*.` });
 
   let f = facturas[fIdx];
   const ahora = Date.now();
-  const duracionMs = f.ciclo?.ms || 2592000000; // 30 días por defecto si no hay ms
 
-  // Actualizar datos
+  // Si puso un ciclo nuevo, lo usamos. Si no, usamos el que ya tenía.
+  if (nuevoCicloRaw) {
+    const cicloNuevo = parseCiclo(nuevoCicloRaw);
+    if (cicloNuevo) f.ciclo = cicloNuevo;
+  }
+
+  const duracionMs = f.ciclo.ms;
   f.fechaCreacion = ahora;
-  f.fechaProximoPago = ahora + duracionMs;
+  f.fechaVencimiento = ahora + duracionMs; // Actualizamos la propiedad correcta
+
   db.facturas[fIdx] = f;
   fs.writeFileSync(filePath, JSON.stringify(db, null, 2));
 
@@ -109,13 +119,13 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
       datos: f
     });
 
-    const caption = `🧾 *RENOVACIÓN EXITOSA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🏪 *Vendedor:* ${f.vendedor.nombre} (${f.vendedor.numero})\n\n_El bot te avisará cuando venza nuevamente._`;
+    const caption = `🧾 *RENOVACIÓN EXITOSA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🏪 *Vendedor:* ${f.vendedor.nombre} (${f.vendedor.numero})\n🔁 *Ciclo:* ${f.ciclo.texto}\n\n_El bot avisará cuando venza nuevamente._`;
 
     await conn.sendMessage(chatId, { image: buffer, caption }, { quoted: msg });
 
     // Temporizador de aviso
     setTimeout(async () => {
-      const aviso = `⏰ *AVISO DE VENCIMIENTO (RENOVADO)* ⏰\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* ha vencido.\n\n📱 *Número Cliente:* ${f.cliente.numero}\n📄 *ID Factura:* ${f.id}\n💰 *Precio:* $${f.precio}`;
+      const aviso = `⏰ *AVISO DE VENCIMIENTO (RENOVADO)* ⏰\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* ha vencido.\n\n📱 *Número Cliente:* ${f.cliente.numero}\n📄 *ID Factura:* ${f.id}\n💰 *Precio:* $${f.precio.toFixed(2)}\n\n_Ya puedes avisar al cliente manualmente._`;
       await conn.sendMessage(chatId, { text: aviso });
     }, duracionMs);
 
