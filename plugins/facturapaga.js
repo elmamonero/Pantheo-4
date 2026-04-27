@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { createCanvas, loadImage } from "canvas";
 
-// Objeto global para rastrear los cronómetros activos y evitar duplicados
+// Almacén global de cronómetros
 if (!global.facturaTimeouts) global.facturaTimeouts = {};
 
 const limpiarNumero = n => String(n || "").replace(/\D/g, "");
@@ -72,10 +72,9 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
 const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   if (!isOwner && !rowner) return;
   const chatId = msg.key.remoteJid;
-  if (args.length < 1) return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <ID-FACTURA> <tiempoASumar(opcional)>` });
+  if (args.length < 1) return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <ID> <tiempo(opcional)>` });
 
-  const idBusqueda = args[0].toUpperCase().trim();
-  const tiempoExtraRaw = args[1];
+  const idBusqueda = args[0].toUpperCase().trim(), tiempoExtraRaw = args[1];
   const filePath = path.join(process.cwd(), "facturas.json");
   if (!fs.existsSync(filePath)) return conn.sendMessage(chatId, { text: "📂 No hay base de datos." });
 
@@ -84,8 +83,7 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   const fIdx = facturas.findIndex(f => f.id === idBusqueda);
   if (fIdx === -1) return conn.sendMessage(chatId, { text: `🔎 ID *${idBusqueda}* no encontrado.` });
 
-  let f = facturas[fIdx];
-  const ahora = Date.now();
+  let f = facturas[fIdx], ahora = Date.now();
   let baseTiempo = f.fechaVencimiento > ahora ? f.fechaVencimiento : ahora;
 
   if (tiempoExtraRaw) {
@@ -93,17 +91,15 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
     if (nuevoCiclo) f.ciclo = nuevoCiclo;
   }
 
-  const msASumar = f.ciclo.ms;
-  f.fechaVencimiento = baseTiempo + msASumar;
+  f.fechaVencimiento = baseTiempo + f.ciclo.ms;
   f.fechaCreacion = ahora;
-
   db.facturas[fIdx] = f;
   fs.writeFileSync(filePath, JSON.stringify(db, null, 2));
 
-  // --- LÓGICA ANTI-DUPLICADOS ---
-  // Si ya existía un temporizador para este ID, lo cancelamos
+  // --- MATAR ALARMA ANTERIOR ---
   if (global.facturaTimeouts[f.id]) {
     clearTimeout(global.facturaTimeouts[f.id]);
+    delete global.facturaTimeouts[f.id];
   }
 
   await conn.sendMessage(chatId, { react: { text: "⏳", key: msg.key } });
@@ -111,17 +107,12 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   try {
     const buffer = await generarFacturaPagaPNG({ logoUrl: f.logoUrl, datos: f });
     const restanteMs = f.fechaVencimiento - ahora;
+    await conn.sendMessage(chatId, { image: buffer, caption: `🧾 *RENOVACIÓN SUMADA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🗓 *Vence:* ${formatFecha(f.fechaVencimiento)}` }, { quoted: msg });
 
-    await conn.sendMessage(chatId, { image: buffer, caption: `🧾 *RENOVACIÓN SUMADA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🗓 *Nuevo Vencimiento:* ${formatFecha(f.fechaVencimiento)}` }, { quoted: msg });
-
-    // Guardamos el nuevo cronómetro en el objeto global usando el ID de la factura
     global.facturaTimeouts[f.id] = setTimeout(async () => {
-      const aviso = `⏰ *AVISO DE VENCIMIENTO* ⏰\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* (${f.cliente.numero}) ha vencido hoy.\n📄 *ID:* ${f.id}`;
-      await conn.sendMessage(chatId, { text: aviso });
-      // Limpiamos la referencia una vez que se ejecuta
+      await conn.sendMessage(chatId, { text: `⏰ *AVISO DE VENCIMIENTO*\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* (${f.cliente.numero}) ha vencido hoy.\n📄 *ID:* ${f.id}` });
       delete global.facturaTimeouts[f.id];
     }, restanteMs);
-
   } catch (e) {
     await conn.sendMessage(chatId, { text: "❌ Error: " + e.message });
   }
