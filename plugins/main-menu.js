@@ -69,8 +69,8 @@ ${readMore}
 ⠞🛍️੭‎ ${usedPrefix}fichareporte
 ⠞🛍️੭‎ ${usedPrefix}setnetflix *texto*
 ⠞🛍️੭‎ ${usedPrefix}netflix
-⠞🛍️੭‎ ${usedPrefix}
-⠞🛍️੭‎ ${usedPrefix}
+⠞🛍️੭‎ ${usedPrefix}setcombos
+⠞🛍️੭‎ ${usedPrefix}combos
 ⠞🛍️੭‎ ${usedPrefix}cambiar *texto*
 ⠞🛍️੭‎ ${usedPrefix}divisas
 
