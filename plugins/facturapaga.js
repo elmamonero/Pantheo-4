@@ -41,7 +41,7 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
   ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Sans-Serif";
   ctx.fillText("FACTURA • PAGO EXITOSO", 140, 55);
   ctx.font = "16px Sans-Serif";
-  ctx.fillText(`Renovada: ${formatFecha(datos.fechaCreacion)}`, 140, 85);
+  ctx.fillText(`Renovación sumada: ${formatFecha(Date.now())}`, 140, 85);
 
   const boxX = 40, boxY = 150, boxW = W - 80, boxH = 360;
   ctx.fillStyle = "#f3f4f6"; ctx.fillRect(boxX, boxY, boxW, boxH);
@@ -53,8 +53,8 @@ async function generarFacturaPagaPNG({ logoUrl, datos }) {
   ctx.fillText(`ID FACTURA: ${datos.id}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`SERVICIO: ${datos.servicio.toUpperCase()}`, boxX + 20, yy); yy += 35;
   ctx.fillText(`PRECIO: $ ${Number(datos.precio).toFixed(2)}`, boxX + 20, yy); yy += 35;
-  ctx.fillText(`CICLO: cada ${datos.ciclo.texto}`, boxX + 20, yy); yy += 35;
-  ctx.fillText(`PRÓXIMO PAGO: ${formatFecha(datos.fechaVencimiento)}`, boxX + 20, yy);
+  ctx.fillText(`CICLO AÑADIDO: ${datos.ciclo.texto}`, boxX + 20, yy); yy += 35;
+  ctx.fillText(`NUEVO VENCIMIENTO: ${formatFecha(datos.fechaVencimiento)}`, boxX + 20, yy);
   
   yy += 50;
   ctx.font = "bold 20px Sans-Serif";
@@ -77,36 +77,38 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   if (!isOwner && !rowner) return;
 
   const chatId = msg.key.remoteJid;
-
   if (args.length < 1) {
-    return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <ID-FACTURA> <nuevoCiclo(opcional)>\n\nEjemplo (Mismo ciclo): .${command} FAC-123456\nEjemplo (Cambiar ciclo): .${command} FAC-123456 1M` }, { quoted: msg });
+    return conn.sendMessage(chatId, { text: `✳️ *Uso:* .${command} <ID-FACTURA> <tiempoASumar(opcional)>` });
   }
 
   const idBusqueda = args[0].toUpperCase().trim();
-  const nuevoCicloRaw = args[1]; // Opcional
+  const tiempoExtraRaw = args[1];
   const filePath = path.join(process.cwd(), "facturas.json");
 
-  if (!fs.existsSync(filePath)) return conn.sendMessage(chatId, { text: "📂 No hay base de datos de facturas." });
+  if (!fs.existsSync(filePath)) return conn.sendMessage(chatId, { text: "📂 No hay base de datos." });
 
   let db = JSON.parse(fs.readFileSync(filePath, "utf8"));
   const facturas = Array.isArray(db.facturas) ? db.facturas : [];
-
   const fIdx = facturas.findIndex(f => f.id === idBusqueda);
 
-  if (fIdx === -1) return conn.sendMessage(chatId, { text: `🔎 No encontré ninguna factura con el ID *${idBusqueda}*.` });
+  if (fIdx === -1) return conn.sendMessage(chatId, { text: `🔎 ID *${idBusqueda}* no encontrado.` });
 
   let f = facturas[fIdx];
   const ahora = Date.now();
+  
+  // LÓGICA DE SUMA:
+  // Si la fecha de vencimiento es mayor a "ahora", sumamos desde el vencimiento.
+  // Si ya venció, sumamos desde "ahora".
+  let baseTiempo = f.fechaVencimiento > ahora ? f.fechaVencimiento : ahora;
 
-  // Si puso un ciclo nuevo, lo usamos. Si no, usamos el que ya tenía.
-  if (nuevoCicloRaw) {
-    const cicloNuevo = parseCiclo(nuevoCicloRaw);
-    if (cicloNuevo) f.ciclo = cicloNuevo;
+  if (tiempoExtraRaw) {
+    const nuevoCiclo = parseCiclo(tiempoExtraRaw);
+    if (nuevoCiclo) f.ciclo = nuevoCiclo;
   }
 
-  const duracionMs = f.ciclo.ms;
-  f.fechaCreacion = ahora;
-  f.fechaVencimiento = ahora + duracionMs; // Actualizamos la propiedad correcta
+  const msASumar = f.ciclo.ms;
+  f.fechaVencimiento = baseTiempo + msASumar;
+  f.fechaCreacion = ahora; // Fecha de la última operación
 
   db.facturas[fIdx] = f;
   fs.writeFileSync(filePath, JSON.stringify(db, null, 2));
@@ -114,20 +116,18 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   await conn.sendMessage(chatId, { react: { text: "⏳", key: msg.key } });
 
   try {
-    const buffer = await generarFacturaPagaPNG({
-      logoUrl: f.logoUrl,
-      datos: f
-    });
-
-    const caption = `🧾 *RENOVACIÓN EXITOSA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🏪 *Vendedor:* ${f.vendedor.nombre} (${f.vendedor.numero})\n🔁 *Ciclo:* ${f.ciclo.texto}\n\n_El bot avisará cuando venza nuevamente._`;
+    const buffer = await generarFacturaPagaPNG({ logoUrl: f.logoUrl, datos: f });
+    
+    const restanteMs = f.fechaVencimiento - ahora;
+    const caption = `🧾 *RENOVACIÓN SUMADA*\n\n📄 *ID:* ${f.id}\n🛠 *Servicio:* ${f.servicio}\n👤 *Cliente:* ${f.cliente.nombre} (${f.cliente.numero})\n🗓 *Nuevo Vencimiento:* ${formatFecha(f.fechaVencimiento)}\n\n_El bot avisará cuando el tiempo total expire._`;
 
     await conn.sendMessage(chatId, { image: buffer, caption }, { quoted: msg });
 
-    // Temporizador de aviso
+    // El temporizador debe durar lo que queda de tiempo TOTAL
     setTimeout(async () => {
-      const aviso = `⏰ *AVISO DE VENCIMIENTO (RENOVADO)* ⏰\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* ha vencido.\n\n📱 *Número Cliente:* ${f.cliente.numero}\n📄 *ID Factura:* ${f.id}\n💰 *Precio:* $${f.precio.toFixed(2)}\n\n_Ya puedes avisar al cliente manualmente._`;
+      const aviso = `⏰ *AVISO DE VENCIMIENTO* ⏰\n\nEl servicio *${f.servicio}* de *${f.cliente.nombre}* (${f.cliente.numero}) ha vencido hoy.\n📄 *ID:* ${f.id}`;
       await conn.sendMessage(chatId, { text: aviso });
-    }, duracionMs);
+    }, restanteMs);
 
   } catch (e) {
     await conn.sendMessage(chatId, { text: "❌ Error: " + e.message });
