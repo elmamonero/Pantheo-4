@@ -1,5 +1,5 @@
-const fs = require("fs");
-const path = require("path");
+import fs from 'fs';
+import path from 'path';
 
 const handler = async (msg, { conn, args }) => {
   const chatId = msg.key.remoteJid;
@@ -49,7 +49,6 @@ const handler = async (msg, { conn, args }) => {
   if (unit === "s") milliseconds = amount * 1000;
   else if (unit === "m") milliseconds = amount * 60 * 1000;
   else if (unit === "h") milliseconds = amount * 60 * 60 * 1000;
-  else milliseconds = 0;
 
   if (milliseconds <= 0) {
     await conn.sendMessage(chatId, {
@@ -59,6 +58,8 @@ const handler = async (msg, { conn, args }) => {
   }
 
   const tiempoPath = path.resolve("./tiempo2.json");
+  
+  // Asegurar que el archivo existe
   if (!fs.existsSync(tiempoPath)) {
     fs.writeFileSync(tiempoPath, JSON.stringify({}, null, 2));
   }
@@ -78,4 +79,5 @@ const handler = async (msg, { conn, args }) => {
 };
 
 handler.command = ["pruebaabrir"];
-module.exports = handler;
+
+export default handler;
