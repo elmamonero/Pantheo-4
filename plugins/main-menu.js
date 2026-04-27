@@ -67,6 +67,10 @@ ${readMore}
 ⠞🛍️੭‎ ${usedPrefix}diamantes
 ⠞🛍️੭‎ ${usedPrefix}setfichareporte *texto*
 ⠞🛍️੭‎ ${usedPrefix}fichareporte
+⠞🛍️੭‎ ${usedPrefix}setnetflix *texto*
+⠞🛍️੭‎ ${usedPrefix}netflix
+⠞🛍️੭‎ ${usedPrefix}
+⠞🛍️੭‎ ${usedPrefix}
 ⠞🛍️੭‎ ${usedPrefix}cambiar *texto*
 ⠞🛍️੭‎ ${usedPrefix}divisas
 
