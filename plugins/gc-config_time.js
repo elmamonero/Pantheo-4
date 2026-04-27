@@ -21,7 +21,7 @@ const handler = async (m, { conn, isAdmin, isOwner, args, usedPrefix, command })
 
 *Ejemplos:*
 ${usedPrefix + command} open 30s (30 segundos)
-${usedPrefix + command} close 10m** (10 minutos)
+${usedPrefix + command} close 10m (10 minutos)
 ${usedPrefix + command} open 1h (1 hora)
 
 > Si no usas letra, se contará como horas.
