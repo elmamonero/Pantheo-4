@@ -36,7 +36,7 @@ const handler = async (m, { conn, text, command }) => {
     
     try {
         fs.writeFileSync('./database.json', JSON.stringify(global.db, null, 2)); 
-        m.reply(`✅ *𝘾𝙪𝙚𝙣𝙩𝙖 𝙙𝙚 𝙉𝙚𝙩𝙛𝙡𝙞𝙦 𝘼𝙘𝙩𝙪𝙖𝙡𝙞𝙯𝙖𝙙𝙖* 🍿`);  
+        m.reply(`✅ *𝘾𝙪𝙚𝙣𝙩𝙖 𝙙𝙚 𝙉𝙚𝙩𝙛𝙡𝙞𝙭 𝘼𝙘𝙩𝙪𝙖𝙡𝙞𝙯𝙖𝙙𝙖* 🍿`);  
     } catch (e) {
         m.reply(`❌ Error al guardar: ${e.message}`);
     }
