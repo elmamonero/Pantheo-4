@@ -1,11 +1,15 @@
-// plugins/addfactura.js — ESM-safe + wa.download fallback
-const fs = require("fs");
-const path = require("path");
-const { createCanvas, loadImage } = require("canvas");
-const FormData = require("form-data");
-const axios = require("axios");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { createCanvas, loadImage } from "canvas";
+import FormData from "form-data";
+import axios from "axios";
 
-// ——— helpers Baileys (sin importar ESM en top) ———
+// Configuración para emular __dirname en ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ——— helpers Baileys (ESM Safe) ———
 async function getDownloader(wa) {
   if (wa && typeof wa.downloadContentFromMessage === "function")
     return wa.downloadContentFromMessage;
@@ -34,6 +38,7 @@ function unwrapMessage(m) {
   }
   return n;
 }
+
 function getQuoted(msg) {
   const root = unwrapMessage(msg?.message) || {};
   const ctx =
@@ -56,11 +61,14 @@ function parseCiclo(token) {
   const ms = uni === "m" ? valor * 60 * 1000 : uni === "h" ? valor * 60 * 60 * 1000 : valor * 24 * 60 * 60 * 1000;
   return { valor, unidad: uni, ms, texto: `${valor}${uni}` };
 }
+
 const limpiarNumero = n => String(n || "").replace(/\D/g, "");
+
 function formatFecha(ts) {
   const d = new Date(ts);
-  return d.toLocaleString("es-ES", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+  return d.toLocaleString("es-ES", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
+
 function isOwnerByNumber(num) {
   if (typeof global.isOwner === "function") return global.isOwner(num);
   try {
@@ -78,17 +86,22 @@ async function subirLogoDesdeCita(msg, wa) {
   if (!DL) throw new Error("No puedo descargar la imagen (Baileys no disponible).");
 
   const stream = await DL(quoted.imageMessage, "image");
-  const tmpDir = path.join(__dirname, "tmp");
+  const tmpDir = path.join(process.cwd(), "tmp");
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
   const tmpPath = path.join(tmpDir, `${Date.now()}_logo.jpg`);
+  
   const ws = fs.createWriteStream(tmpPath);
   for await (const chunk of stream) ws.write(chunk);
-  ws.end(); await new Promise(r => ws.on("finish", r));
+  ws.end(); 
+  await new Promise(r => ws.on("finish", r));
 
   const form = new FormData();
   form.append("file", fs.createReadStream(tmpPath));
-  const res = await axios.post("https://cdn.russellxz.click/upload.php", form, { headers: form.getHeaders() });
-  fs.unlinkSync(tmpPath);
+  const res = await axios.post("https://cdn.russellxz.click/upload.php", form, { 
+    headers: { ...form.getHeaders() } 
+  });
+  
+  if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
   if (!res.data?.url) throw new Error("No se pudo subir el logo.");
   return res.data.url;
 }
@@ -98,16 +111,16 @@ async function generarFacturaPNG({ logoUrl, datos }) {
   const canvas = createCanvas(W, H);
   const ctx = canvas.getContext("2d");
 
-  // Header
+  // Fondo y Header
   ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "#111827"; ctx.fillRect(0, 0, W, 120);
 
   try {
     const logo = await loadImage(logoUrl);
     const size = 90, x = 30, y = 15;
-    ctx.save(); ctx.beginPath(); ctx.arc(x+size/2, y+size/2, size/2, 0, Math.PI*2); ctx.closePath(); ctx.clip();
+    ctx.save(); ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
     ctx.drawImage(logo, x, y, size, size); ctx.restore();
-  } catch {}
+  } catch (e) { console.error("Error cargando logo:", e); }
 
   ctx.fillStyle = "#ffffff"; ctx.font = "bold 34px Sans-Serif";
   ctx.fillText("FACTURA • PAGO EXITOSO", 140, 55);
@@ -137,7 +150,7 @@ async function generarFacturaPNG({ logoUrl, datos }) {
   ctx.fillText(`Número: ${datos.vendedor.numero}`, boxX + boxW / 2 + 10, yy);
 
   // Sello
-  ctx.save(); ctx.translate(W - 260, boxY + 120); ctx.rotate(-Math.PI/12);
+  ctx.save(); ctx.translate(W - 260, boxY + 120); ctx.rotate(-Math.PI / 12);
   ctx.strokeStyle = "#10b981"; ctx.lineWidth = 6; ctx.strokeRect(-10, -40, 240, 80);
   ctx.fillStyle = "#10b981"; ctx.font = "bold 28px Sans-Serif"; ctx.fillText("PAGO EXITOSO", 8, 10);
   ctx.restore();
@@ -163,8 +176,9 @@ const handler = async (msg, { conn, args, command, wa }) => {
   }
 
   if (args.length < 7) {
-    return conn.sendMessage(chatId, { text:
-`✳️ *Uso correcto:*
+    return conn.sendMessage(chatId, {
+      text:
+        `✳️ *Uso correcto:*
 .${command} <numCliente> <numVendedor> <servicio> <precio> <nombreCliente> <nombreVendedor> <ciclo>
 
 📌 Ejemplo:
@@ -173,7 +187,8 @@ const handler = async (msg, { conn, args, command, wa }) => {
 ➕ Notas:
 • Nombres sin espacios (usa guiones: juan_perez)
 • Ciclo: 1m / 1h / 1d, etc.
-• *Responde a una imagen* para usarla como logo.` }, { quoted: msg });
+• *Responde a una imagen* para usarla como logo.`
+    }, { quoted: msg });
   }
 
   const numCliente = limpiarNumero(args[0]);
@@ -189,8 +204,9 @@ const handler = async (msg, { conn, args, command, wa }) => {
   }
 
   let logoUrl;
-  try { logoUrl = await subirLogoDesdeCita(msg, wa); }
-  catch (e) {
+  try {
+    logoUrl = await subirLogoDesdeCita(msg, wa);
+  } catch (e) {
     await conn.sendMessage(chatId, { react: { text: "❌", key: msg.key } });
     return conn.sendMessage(chatId, { text: `❌ ${e.message}` }, { quoted: msg });
   }
@@ -213,8 +229,9 @@ const handler = async (msg, { conn, args, command, wa }) => {
   };
 
   let buffer;
-  try { buffer = await generarFacturaPNG({ logoUrl, datos: facturaData }); }
-  catch (e) {
+  try {
+    buffer = await generarFacturaPNG({ logoUrl, datos: facturaData });
+  } catch (e) {
     await conn.sendMessage(chatId, { react: { text: "❌", key: msg.key } });
     return conn.sendMessage(chatId, { text: `❌ Error al generar la factura: ${e.message}` }, { quoted: msg });
   }
@@ -226,7 +243,7 @@ const handler = async (msg, { conn, args, command, wa }) => {
   fs.writeFileSync(facturasPath, JSON.stringify(file, null, 2));
 
   const caption =
-`🧾 *Factura generada (PAGO EXITOSO)*
+    `🧾 *Factura generada (PAGO EXITOSO)*
 📄 ID: ${facturaData.id}
 🛠 Servicio: ${servicio}
 💵 Precio: $ ${precio.toFixed(2)}
@@ -241,7 +258,7 @@ const handler = async (msg, { conn, args, command, wa }) => {
   const safeSend = async (jid) => {
     if (!jid || enviados.has(jid)) return;
     enviados.add(jid);
-    try { await conn.sendMessage(jid, { image: buffer, caption }); } catch {}
+    try { await conn.sendMessage(jid, { image: buffer, caption }); } catch (e) { console.error("Error enviando factura:", e); }
   };
 
   await safeSend(chatId);
@@ -254,4 +271,4 @@ const handler = async (msg, { conn, args, command, wa }) => {
 };
 
 handler.command = ["addfactura"];
-module.exports = handler;
+export default handler;
