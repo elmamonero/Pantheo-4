@@ -1,44 +1,70 @@
-const handler = async (m, {conn, isAdmin, isOwner, args, usedPrefix, command}) => {
+const handler = async (m, { conn, isAdmin, isOwner, args, usedPrefix, command }) => {
   if (!(isAdmin || isOwner)) {
-          global.dfail('admin', m, conn);
+    global.dfail('admin', m, conn);
     throw false;
   }
+
   const isClose = {
-          'open': 'not_announcement',
-          'buka': 'not_announcement',
+    'open': 'not_announcement',
+    'buka': 'not_announcement',
     'on': 'not_announcement',
-          '1': 'not_announcement',
-          'close': 'announcement',
-          'tutup': 'announcement',
+    '1': 'not_announcement',
+    'close': 'announcement',
+    'tutup': 'announcement',
     'off': 'announcement',
     '0': 'announcement',
-  }[(args[0] || '')];
-  if (isClose === undefined) {
-          const caption = `
-*[ ℹ️ ] Ingresa una opción válida seguido del número de horas.*
+  }[(args[0] || '').toLowerCase()];
 
-*[ 💡 ] Ejemplo:*
-${usedPrefix + command} *open 1*
-${usedPrefix + command} *close 1*
+  if (isClose === undefined || !args[1]) {
+    const caption = `
+*[ ℹ️ ] Formato incorrecto.*
 
-> ⍴ᥲrᥲ 𝗊ᥙᥱ ᥱᥣ grᥙ⍴᥆ ᥱs𝗍ᥱ *abierto/cerrado* ⍴᥆r ᥙᥒᥲ һ᥆rᥲ.
+*Ejemplos:*
+${usedPrefix + command} open 30**s** (30 segundos)
+${usedPrefix + command} close 10**m** (10 minutos)
+${usedPrefix + command} open 1**h** (1 hora)
+
+> Si no usas letra, se contará como horas.
 `;
     m.reply(caption);
-          throw false;
+    throw false;
   }
-  const timeoutset = 86400000 * args[1] / 24;
-  await conn.groupSettingUpdate(m.chat, isClose).then(async (_)=> {
-          m.reply(`*[ ⚠️ ] Grupo ${isClose == 'announcement' ? 'cerrado' : 'abierto'} ${args[1] ? `durante* \`\`\`${clockString(timeoutset)}\`\`\` *hora(s)*` : ''}`);
+
+  // Lógica para detectar s, m, h
+  const timeArg = args[1].toLowerCase();
+  const match = timeArg.match(/^(\d+)([smh]?)$/);
+  
+  if (!match) {
+    m.reply('❌ Formato de tiempo inválido. Usa números seguidos de s, m o h.');
+    throw false;
+  }
+
+  const value = parseInt(match[1]);
+  const unit = match[2] || 'h'; // Por defecto horas si no hay unidad
+  
+  let timeoutset;
+  switch (unit) {
+    case 's': timeoutset = value * 1000; break;
+    case 'm': timeoutset = value * 60 * 1000; break;
+    case 'h': timeoutset = value * 3600 * 1000; break;
+    default: timeoutset = value * 3600 * 1000;
+  }
+
+  await conn.groupSettingUpdate(m.chat, isClose).then(async (_) => {
+    m.reply(`*[ ⚠️ ] Grupo ${isClose == 'announcement' ? 'cerrado' : 'abierto'} durante* \`\`\`${clockString(timeoutset)}\`\`\``);
   });
-  if (args[1]) {
-         setTimeout(async () => {
-      await conn.groupSettingUpdate(m.chat, `${isClose == 'announcement' ? 'not_announcement' : 'announcement'}`).then(async (_)=>{
-                    conn.reply(m.chat, `${isClose == 'not_announcement' ? '*[ ℹ️ ] Función activada con éxito*' : '*[ ℹ️ ] Función finalizada el grupo se abrió con éxito*'}!`);
-            });
+
+  if (timeoutset > 0) {
+    setTimeout(async () => {
+      const reverseSetting = isClose == 'announcement' ? 'not_announcement' : 'announcement';
+      await conn.groupSettingUpdate(m.chat, reverseSetting).then(async (_) => {
+        conn.reply(m.chat, `*[ ℹ️ ] Tiempo cumplido. El grupo se ha ${reverseSetting == 'announcement' ? 'cerrado' : 'abierto'} automáticamente.*`);
+      });
     }, timeoutset);
   }
 };
-handler.help = ['grouptime *<open/close>* *<num>*'];
+
+handler.help = ['grouptime *<open/close>* *<tiempo>*'];
 handler.tags = ['gc'];
 handler.command = /^(grouptime|gctime)$/i;
 handler.botAdmin = true;
@@ -51,6 +77,5 @@ function clockString(ms) {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor(ms / 60000) % 60;
   const s = Math.floor(ms / 1000) % 60;
-  console.log({ms, h, m, s});
-  return [h, m, s].map((v) => v.toString().padStart(2, 0) ).join(':');
+  return [h, m, s].map((v) => v.toString().padStart(2, '0')).join(':');
 }
