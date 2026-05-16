@@ -271,20 +271,20 @@ ${readMore}
 ⠞👑੭ ${usedPrefix}chetar
 ⠞👑੭ ${usedPrefix}unbanuser`.trim();
 
-    await conn.sendMessage(m.chat, {
-      image: { url: img },
-      caption: text,
-      contextInfo: {
-        mentionedJid: [m.sender],
-        isForwarded: true,
-        forwardingScore: 999
-      }
-  }, { quoted: fkontak });
-
-  } catch (e) {
-    console.error(e);
-    conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
+await conn.sendMessage(m.chat, {
+  image: { url: img },
+  caption: text,
+  contextInfo: {
+    mentionedJid: [m.sender],
+    isForwarded: true,
+    forwardingScore: 999
   }
+}, { quoted: fkontak });
+
+} catch (e) {
+  console.error(e);
+  conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
+}
 };
 
 handler.command = /^(menu|menú|memu|memú|help|info|comandos|2help|menu1.2|ayuda|commands|commandos|cmd)$/i;
