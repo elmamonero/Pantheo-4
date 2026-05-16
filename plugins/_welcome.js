@@ -42,7 +42,7 @@ if (chat.welcome && m.messageStubType == 27) {
   
   await conn.sendMessage(m.chat, {
     image: { url: pp },
-    caption(`${txt}\n\n${bienvenida}`),
+    caption: `${txt}\n\n${bienvenida}`,
     contextInfo: {
       mentionedJid: [who],
       isForwarded: true,
@@ -87,7 +87,7 @@ if (chat.welcome && m.messageStubType == 32) {
 *╭━─━──────────━─━╯*
 *┊»* 👤𝑼𝒔𝒖𝒂𝒓𝒊𝒐: ${taguser}
 *┊»* 👥𝑮𝒓𝒖𝒑𝒐: ${groupName}
-*╰┈┈┈┈┈┈┈┈┈┈┈┈≫*\\n\\n 𝖳𝗎 𝗉𝗋𝖾𝗌𝖾𝗇𝖼𝗂𝖺 𝖿𝗎𝖾 𝗎𝗇 𝖾𝗌𝗍𝗈𝗋𝖻𝗈.\nׅ⿻ ¡Esperamos que no vuelvas nunca!\n\n> ${dev}`
+*╰┈┈┈┈┈┈┈┈┈┈┈┈≫*\n\n 𝖳𝗎 𝗉𝗋𝖾𝗌𝖾𝗇𝖼𝗂𝖺 𝖿𝗎𝖾 𝗎𝗇 𝖾𝗌𝗍𝗈𝗋𝖻𝗈.\nׅ⿻ ¡Esperamos que no vuelvas nunca!\n\n> ${dev}`
   
   await conn.sendMessage(m.chat, {
     image: { url: pp },
