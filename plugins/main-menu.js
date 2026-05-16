@@ -281,7 +281,7 @@ ${readMore}
       }
   }, { quoted: fkontak });
 
-  } catch (e) { // <-- Esta es tu línea 284
+  } catch (e) {
     console.error(e);
     conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
   }
