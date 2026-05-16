@@ -16,12 +16,12 @@ global.botNumber = '' //Ejemplo: 573218138672
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
 global.owner = [
-  ['+50557399453', 'PantheonShop', true],
-  ['+245037195649183', 'PantheonShop lid', true],
-  ['31624532091038', 'Pantheon Bot 1 Lid', true],
-  ['573144833976', 'Pantheon Bot 1', true],
+  ['+50587489794', 'PantheonShop', true],
+  ['+269608770633909', 'PantheonShop lid', true],
+  ['180672899592245', 'Pantheon Bot 1 Lid', true],
+  ['50587489794', 'Pantheon Bot 1', true],
   ['573112754478', 'LiD', true],
-  ['573203680195', 'LiD', true],
+  ['+50587489794', 'LiD', true],
   ['222823574442235', 'LiD', true],
   ['8161192853558', 'LiD', true],
   ['573203680195', 'LiD', true],
