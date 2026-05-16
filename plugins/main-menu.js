@@ -279,9 +279,9 @@ ${readMore}
         isForwarded: true,
         forwardingScore: 999
       }
-    }, { quoted: fkontak });
+  }, { quoted: fkontak });
 
-  } catch (e) {
+  } catch (e) { // <-- Esta es tu línea 284
     console.error(e);
     conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
   }
