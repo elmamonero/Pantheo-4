@@ -14,7 +14,6 @@ export async function before(m, { conn, participants, groupMetadata }) {
   let who = m.messageStubParameters[0]
   let taguser = `@${who.split('@')[0]}`
   let pp = await conn.profilePictureUrl(m.messageStubParameters[0], 'image').catch(_ => 'https://files.catbox.moe/xr2m6u.jpg')
-  let img = await (await fetch(`${pp}`)).buffer()
   let chat = global.db.data.chats[m.chat]
   let txt = `¡Bienvenid@! ${await conn.getName(who)}\nAhora somos ${groupSize} miembros en el grupo.`
   let txt1 = `¡Adiós! ${await conn.getName(who)}\nAhora somos ${groupSize} miembros en el grupo`
@@ -22,6 +21,8 @@ export async function before(m, { conn, participants, groupMetadata }) {
   let sunflare = `ゲ◜៹ New Member ៹◞ゲ`
   let sunflare1 = `ゲ◜៹ Kicked Member ៹◞ゲ`
   let sunflare2 = `ゲ◜៹ Bye Member ៹◞ゲ`
+  let dev = '+573203680195'
+  let fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:Pantheon Bot\nEND:VCARD` } } }
 
 if (chat.welcome && m.messageStubType == 27) {
   const groupName = groupMetadata.subject
@@ -38,7 +39,16 @@ if (chat.welcome && m.messageStubType == 27) {
 *┊»* 👤𝑼𝒔𝒖𝒂𝒓𝒊𝒐: ${taguser}
 *┊»* 👥𝑮𝒓𝒖𝒑𝒐: ${groupName}
 *╰┈┈┈┈┈┈┈┈┈┈┈┈≫*\n\n${groupDesc}\n\n> ${dev}`
-  await conn.sendLuffy(m.chat, txt, sunflare, bienvenida, img, img, insta, fkontak)
+  
+  await conn.sendMessage(m.chat, {
+    image: { url: pp },
+    caption(`${txt}\n\n${bienvenida}`),
+    contextInfo: {
+      mentionedJid: [who],
+      isForwarded: true,
+      forwardingScore: 999
+    }
+  }, { quoted: fkontak })
 }
 
 if (chat.welcome && m.messageStubType == 28) {
@@ -50,9 +60,18 @@ if (chat.welcome && m.messageStubType == 28) {
         .replace(/@user/g, taguser)
         .replace(/@group/g, groupName)
         .replace(/@desc/g, groupDesc)
-    : `*¡Expulsado!*\n෫ࣲׄ֟፝͡${taguser} 👊🏻꒱\n\nᏊ⁠ 𝖴𝗇 𝗇𝖾𝗀𝗋𝗈 𝗆𝖾𝗇𝗈𝗌 𝖾𝗇 𝖾𝗅 𝗀𝗋𝗎𝗉𝗈, 𝗉𝗈𝗋 𝗇𝗈 𝗈𝖻𝖾𝖽𝖾𝖼𝖾𝗋 𝗅𝖺𝗌 𝗋𝖾𝗀𝗅𝖺𝗌.\n ׅ⿻ 𝖮𝗃𝖺𝗅𝖺 𝗒 𝗅𝖺 𝖾𝗅𝗂𝗆𝗂𝗇𝖺𝖼𝗂𝗈𝗇 𝗅𝖾 𝗁𝖺𝗀𝖺 𝗋𝖾𝖿𝗅𝖾𝗑𝗂𝗈𝗇𝖺𝗋 𝗑𝖣\n\n> ${dev}`    
-    await conn.sendLuffy(m.chat, txt1, sunflare1, ban, img, img, insta, fkontak)
-  }
+    : `*¡Expulsado!*\n෫ࣲׄ֟፝͡${taguser} 👊🏻꒱\n\nᏊ⁠ 𝖴𝗇 𝗇𝖾𝗀𝗋𝗈 𝗆𝖾𝗇𝗈𝗌 𝖾𝗅 𝗀𝗋𝗎𝗉𝗈, 𝗉𝗈𝗋 𝗇𝗈 𝗈𝖻𝖾𝖽𝖾𝖼𝖾𝗋 𝗅𝖺𝗌 𝗋𝖾𝗀𝗅𝖺𝗌.\nׅ⿻ 𝖮𝗃𝖺𝗅𝖺 𝗒 𝗅𝖺 𝖾𝗅𝗂𝗆𝗂𝗇𝖺𝖼𝗂𝗈𝗇 𝗅𝖾 𝗁𝖺𝗀𝖺 𝗋𝖾𝖿𝗅𝖾𝗑𝗂𝗈𝗇𝖺𝗋 𝗑𝗗\n\n> ${dev}`    
+  
+  await conn.sendMessage(m.chat, {
+    image: { url: pp },
+    caption: `${txt1}\n\n${ban}`,
+    contextInfo: {
+      mentionedJid: [who],
+      isForwarded: true,
+      forwardingScore: 999
+    }
+  }, { quoted: fkontak })
+}
 
 if (chat.welcome && m.messageStubType == 32) {
   const groupName = groupMetadata.subject
@@ -68,8 +87,15 @@ if (chat.welcome && m.messageStubType == 32) {
 *╭━─━──────────━─━╯*
 *┊»* 👤𝑼𝒔𝒖𝒂𝒓𝒊𝒐: ${taguser}
 *┊»* 👥𝑮𝒓𝒖𝒑𝒐: ${groupName}
-*╰┈┈┈┈┈┈┈┈┈┈┈┈≫*\n\n 𝖳𝗎 𝗉𝗋𝖾𝗌𝖾𝗇𝖼𝗂𝖺 𝖿𝗎𝖾 𝗎𝗇 𝖾𝗌𝗍𝗈𝗋𝖻𝗈.\n ׅ⿻ ¡Esperamos que no vuelvas nunca!\n\n> ${dev}`
-    await conn.sendLuffy(m.chat, txt1, sunflare2, bye, img, img, insta, fkontak)
-  }}
-
-
+*╰┈┈┈┈┈┈┈┈┈┈┈┈≫*\\n\\n 𝖳𝗎 𝗉𝗋𝖾𝗌𝖾𝗇𝖼𝗂𝖺 𝖿𝗎𝖾 𝗎𝗇 𝖾𝗌𝗍𝗈𝗋𝖻𝗈.\nׅ⿻ ¡Esperamos que no vuelvas nunca!\n\n> ${dev}`
+  
+  await conn.sendMessage(m.chat, {
+    image: { url: pp },
+    caption: `${txt1}\n\n${bye}`,
+    contextInfo: {
+      mentionedJid: [who],
+      isForwarded: true,
+      forwardingScore: 999
+    }
+  }, { quoted: fkontak })
+}}
