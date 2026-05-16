@@ -8,6 +8,10 @@ let rtotalreg = Object.values(global.db.data.users || {}).filter(user => user.re
 
 const taguser = `@${m.sender.split('@')[0]}`;
 const botname = 'Pantheon Bot';
+const saludo = 'Bienvenido';
+const uptime = clockString(Date.now() - (global.DB_STATE?.startTime || Date.now()));
+const img = 'https://i.imgur.com/K3Qz8yF.jpeg';
+const fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:${botname}\nEND:VCARD` } } };
 
 const text = `
 ︵᷼     ⿻ *PANTHEON* ࣪   ࣭  ࣪ *WA BOT* ࣭  🐈  ࣪   ࣭
