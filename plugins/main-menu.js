@@ -1,3 +1,5 @@
+let handler = async (m, { conn, usedPrefix, command, text }) => {
+try {
 const user = global.db.data.users[m.sender] || {};
 const { money = 0, joincount = 0, exp = 0, limit = 0, level = 0, role = '' } = user;
 
@@ -282,8 +284,8 @@ await conn.sendMessage(m.chat, {
 }, { quoted: fkontak });
 
 } catch (e) {
-  console.error(e);
-  conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
+console.error(e);
+conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
 }
 };
 
@@ -296,8 +298,8 @@ const more = String.fromCharCode(8206);
 const readMore = more.repeat(4001);
 
 function clockString(ms) {
-  const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000);
-  const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
-  const s = isNaN(ms) ? '--' : Math.floor(ms / 1000) % 60;
-  return [h, m, s].map((v) => v.toString().padStart(2, 0)).join(':');
+const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000);
+const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
+const s = isNaN(ms) ? '--' : Math.floor(ms / 1000) % 60;
+return [h, m, s].map((v) => v.toString().padStart(2, 0)).join(':');
 }
