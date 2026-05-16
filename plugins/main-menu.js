@@ -1,19 +1,27 @@
-let handler = async (m, { conn, usedPrefix, command, text }) => {
-try {
-const user = global.db.data.users[m.sender] || {};
-const { money = 0, joincount = 0, exp = 0, limit = 0, level = 0, role = '' } = user;
+import fetch from 'node-fetch';
 
-let totalreg = Object.keys(global.db.data.users || {}).length;
-let rtotalreg = Object.values(global.db.data.users || {}).filter(user => user.registered).length;
+const handler = async (m, { conn, usedPrefix, isPrems }) => {
+  try {
+    await m.react('🧡');
 
-const taguser = `@${m.sender.split('@')[0]}`;
-const botname = 'Pantheon Bot';
-const saludo = 'Bienvenido';
-const uptime = clockString(Date.now() - (global.DB_STATE?.startTime || Date.now()));
-const img = 'https://i.imgur.com/K3Qz8yF.jpeg';
-const fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:${botname}\nEND:VCARD` } } };
+    let img = 'https://cdn.russellxz.click/c6a542fe.jpeg';
+    let insta = 'https://chat.whatsapp.com/HvDCvNqXSiW19MFXJmWhoF';
 
-const text = `
+    const _uptime = process.uptime() * 1000;
+    const uptime = clockString(_uptime);
+
+    const user = global.db.data.users[m.sender] || {};
+    const { money = 0, joincount = 0, exp = 0, limit = 0, level = 0, role = '' } = user;
+
+    let totalreg = Object.keys(global.db.data.users || {}).length;
+    let rtotalreg = Object.values(global.db.data.users || {}).filter(user => user.registered).length;
+
+    const taguser = `@${m.sender.split('@')[0]}`;
+    const botname = 'Pantheon Bot';
+    const saludo = 'Bienvenido';
+    const fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:${botname}\nEND:VCARD` } } };
+
+    const text = `
 ︵᷼     ⿻ *PANTHEON* ࣪   ࣭  ࣪ *WA BOT* ࣭  🐈  ࣪   ࣭
 ✿ *Hᴏʟᴀ* *${taguser}*\n*${saludo}*
 
@@ -277,20 +285,19 @@ ${readMore}
 ⠞👑੭ ${usedPrefix}chetar
 ⠞👑੭ ${usedPrefix}unbanuser`.trim();
 
-await conn.sendMessage(m.chat, {
-  image: { url: img },
-  caption: text,
-  contextInfo: {
-    mentionedJid: [m.sender],
-    isForwarded: true,
-    forwardingScore: 999
-  }
-}, { quoted: fkontak });
+    conn.sendMessage(m.chat, {
+      image: { url: img },
+      caption: text,
+      contextInfo: {
+        mentionedJid: [m.sender],
+        isForwarded: true,
+        forwardingScore: 999
+      }
+    }, { quoted: fkontak });
 
-} catch (e) {
-console.error(e);
-conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
-}
+  } catch (e) {
+    conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
+  }
 };
 
 handler.command = /^(menu|menú|memu|memú|help|info|comandos|2help|menu1.2|ayuda|commands|commandos|cmd)$/i;
@@ -298,12 +305,11 @@ handler.fail = null;
 
 export default handler;
 
-const more = String.fromCharCode(8206);
-const readMore = more.repeat(4001);
-
+const more = String.fromCharCode(8206)
+const readMore = more.repeat(4001)
 function clockString(ms) {
-const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000);
-const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
-const s = isNaN(ms) ? '--' : Math.floor(ms / 1000) % 60;
-return [h, m, s].map((v) => v.toString().padStart(2, 0)).join(':');
+  const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000);
+  const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
+  const s = isNaN(ms) ? '--' : Math.floor(ms / 1000) % 60;
+  return [h, m, s].map((v) => v.toString().padStart(2, 0)).join(':');
 }
