@@ -1,13 +1,13 @@
-    const user = global.db.data.users[m.sender] || {};
-    const { money = 0, joincount = 0, exp = 0, limit = 0, level = 0, role = '' } = user;
+const user = global.db.data.users[m.sender] || {};
+const { money = 0, joincount = 0, exp = 0, limit = 0, level = 0, role = '' } = user;
 
-    let totalreg = Object.keys(global.db.data.users || {}).length;
-    let rtotalreg = Object.values(global.db.data.users || {}).filter(user => user.registered).length;
+let totalreg = Object.keys(global.db.data.users || {}).length;
+let rtotalreg = Object.values(global.db.data.users || {}).filter(user => user.registered).length;
 
-    const taguser = `@${m.sender.split('@')[0]}`;
-    const botname = 'Pantheon Bot';
+const taguser = `@${m.sender.split('@')[0]}`;
+const botname = 'Pantheon Bot';
 
-    const text = `
+const text = `
 ︵᷼     ⿻ *PANTHEON* ࣪   ࣭  ࣪ *WA BOT* ࣭  🐈  ࣪   ࣭
 ✿ *Hᴏʟᴀ* *${taguser}*\n*${saludo}*
 
