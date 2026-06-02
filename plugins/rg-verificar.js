@@ -65,7 +65,7 @@ let handler = async function (m, { conn, text, args, usedPrefix, command }) {
             externalAdReply: {
                 title: '෫໋ׅׄ𝆬🍃ິ⃨ 𝖱𝖾𝗀𝗂𝗌𝗍𝗋𝗈 - 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇  ׄ ׄ𑁍̵ ֕︵۪۪۪۪᷼ ּ',
                 body: club, // Aquí usamos 'club' definido antes
-                thumbnailUrl: 'https://cdn.russellxz.click/c6a542fe.jpeg',
+                thumbnailUrl: 'https://cdn.yupra.my.id/yp/wafk1s4q.jpg',
                 sourceUrl: 'https://whatsapp.com/channel/0029Vb1X1TDElah1FEQ4xm0K',
                 mediaType: 1,
                 showAdAttribution: true,
