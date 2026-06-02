@@ -103,10 +103,10 @@ global.canalNombreM = ["Pantheon Bot", "Pantheon Bot", "Pantheon Bot"]
 global.channelRD = await getRandomChannel()
   
 global.icono = [ 
-'https://cdn.yupra.my.id/yp/wafk1s4q.jpg',
-'https://cdn.yupra.my.id/yp/wafk1s4q.jpg',
-'https://cdn.yupra.my.id/yp/wafk1s4q.jpg',
-'https://cdn.yupra.my.id/yp/wafk1s4q.jpg',
+'https://cdn.yupra.my.id/yp/8tu0zf1n.jpg',
+'https://cdn.yupra.my.id/yp/8tu0zf1n.jpg',
+'https://cdn.yupra.my.id/yp/8tu0zf1n.jpg',
+'https://cdn.yupra.my.id/yp/8tu0zf1n.jpg',
 ].getRandom()
 
 global.urls = [
