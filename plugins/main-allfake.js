@@ -32,10 +32,10 @@ let who = m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.fromMe ? c
 //let pp = await conn.profilePictureUrl(who, 'image').catch(_ => 'https://telegra.ph/file/327f6ad853cb4f405aa80.jpg')
 
 //creador y otros
-global.creador = 'Wa.me/573203680195'
+global.creador = 'Wa.me/50587489794'
 global.botreal = `${(conn.user.jid == global.conn.user.jid ? 'Oficial' : 'Sub-Bot')}`
 global.ofcbot = `${conn.user.jid.split('@')[0]}`
-global.asistencia = 'Wa.me/573203680195'
+global.asistencia = 'Wa.me/50587489794'
 global.namech = '˒𖥻˚𝐏𝐀𝐍𝐓𝐇𝐄𝐎𝐍 - 𝐂𝐡𝐚𝐧𝐧𝐞𝐥﹋꥟'
 global.namechannel2 = 'Pantheon Bot'
 global.namegrupo = 'シ︎ Pantheon-BOT '
@@ -88,10 +88,10 @@ global.readMore = more.repeat(850)
 
 global.authsticker = `┊🤖Bot\n┊↳${botname}\n\n┊👑Usuario\n┊↳ @${conn.getName(m.sender)}`;
 
-global.packsticker = `Pantheon Bot┊ Wa.me/573203680195`
+global.packsticker = `Pantheon Bot┊ Wa.me/50587489794`
 
 //Fakes
-global.fkontak = { key: { participants:"0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "Halo" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:Sy;Bot;;;\nFN:y\nitem1.TEL;waid=573203680195:573203680195\nitem1.X-ABLabel:Ponsel\nEND:VCARD` }}, "participant": "0@s.whatsapp.net" }
+global.fkontak = { key: { participants:"0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "Halo" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:Sy;Bot;;;\nFN:y\nitem1.TEL;waid=50587489794:50587489794\nitem1.X-ABLabel:Ponsel\nEND:VCARD` }}, "participant": "0@s.whatsapp.net" }
 
 global.fake = { contextInfo: { isForwarded: true, forwardedNewsletterMessageInfo: { newsletterJid: '120363392742449171@newsletter', newsletterName: "Pantheon Bot", serverMessageId: -1 }
 }}, { quoted: m }

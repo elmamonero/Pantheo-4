@@ -24,10 +24,10 @@ global.owner = [
   ['+50587489794', 'LiD', true],
   ['222823574442235', 'LiD', true],
   ['8161192853558', 'LiD', true],
-  ['573203680195', 'LiD', true],
+  ['50587489794', 'LiD', true],
   ['194678670520530', 'LiD', true],
   ['222823574442235', 'LiD', true],
-  ['573203680195', 'LiD', true],
+  ['50587489794', 'LiD', true],
   ['194678670520530', 'LiD', true],
   ['222823574442235', 'LiD', true],
   ['162337533259812', 'LiD', true]
@@ -36,7 +36,7 @@ global.owner = [
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
 global.mods = []
-global.suittag = ['573203680195'] 
+global.suittag = ['50587489794'] 
 global.prems = []
 
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
@@ -79,7 +79,7 @@ global.insta = 'https://whatsapp.com/channel/0029Vb3ahtE96H4Lk7DfEU0B'
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
 global.catalogo = fs.readFileSync('./media/catalogo.jpg');
-global.estilo = { key: {  fromMe: false, participant: `0@s.whatsapp.net`, ...(false ? { remoteJid: "573203680195-120363317332020195@g.us" } : {}) }, message: { orderMessage: { itemCount : -999999, status: 1, surface : 1, message: 'Pantheon Bot', orderTitle: 'Bang', thumbnail: catalogo, sellerJid: '0@s.whatsapp.net'}}}
+global.estilo = { key: {  fromMe: false, participant: `0@s.whatsapp.net`, ...(false ? { remoteJid: "50587489794-120363317332020195@g.us" } : {}) }, message: { orderMessage: { itemCount : -999999, status: 1, surface : 1, message: 'Pantheon Bot', orderTitle: 'Bang', thumbnail: catalogo, sellerJid: '0@s.whatsapp.net'}}}
 global.multiplier = 70
 
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*

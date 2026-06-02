@@ -21,7 +21,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
   let sunflare = `ゲ◜៹ New Member ៹◞ゲ`
   let sunflare1 = `ゲ◜៹ Kicked Member ៹◞ゲ`
   let sunflare2 = `ゲ◜៹ Bye Member ៹◞ゲ`
-  let dev = '+573203680195'
+  let dev = '+50587489794'
   let fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:Pantheon Bot\nEND:VCARD` } } }
 
 if (chat.welcome && m.messageStubType == 27) {

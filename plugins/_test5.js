@@ -28,7 +28,7 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
 ✿ *Hᴏʟᴀ* *${taguser}*
 *${saludo}*
 
-> ꒰꛱ ͜Desarrollado por *Pantheon* +573203680195
+> ꒰꛱ ͜Desarrollado por *Pantheon* +50587489794
 
 𓏸🌺  \`Bot Name:\` ${botname}  
 𓈒𓏸🌷 \`Activo:\` ${uptime}  

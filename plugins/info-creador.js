@@ -11,7 +11,7 @@ let handler = async (m, { conn, usedPrefix, text, args, command }) => {
     // VCARD
     let list = [{
         displayName: "Pantheon-OFC 🎩",
-        vcard: `BEGIN:VCARD\nVERSION:3.0\nFN: Pantheon-OFC\nTEL;waid=573203680195:573203680195\nEND:VCARD`,
+        vcard: `BEGIN:VCARD\nVERSION:3.0\nFN: Pantheon-OFC\nTEL;waid=50587489794:50587489794\nEND:VCARD`,
     }];
 
     await conn.sendMessage(m.chat, {
@@ -25,7 +25,7 @@ let handler = async (m, { conn, usedPrefix, text, args, command }) => {
                 title: '¡Hola! ʏᴏ sᴏʏ ᴇʟ ᴄʀᴇᴀᴅᴏʀ ᴅᴇ Pᴀɴᴛʜᴇᴏɴ Bᴏᴛ!',
                 body: dev,
                 thumbnailUrl: 'https://cdn.yupra.my.id/yp/8tu0zf1n.jpg',
-                sourceUrl: 'https://wa.me/573203680195?text=Vengo+Del+Comando+.owner',
+                sourceUrl: 'https://wa.me/50587489794?text=Vengo+Del+Comando+.owner',
                 mediaType: 1,
                 renderLargerThumbnail: true
             }
