@@ -22,31 +22,6 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
-    name: 'Nexevo', 
-    url: `https://nexevo.onrender.com/download/y?url=`,
-    getAudioUrl: (data) => data?.result?.url || data?.result?.download,
-    getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumb || data?.result?.thumbnail,
-    getDuration: (data) => data?.result?.duration
-  },
-  { 
-    name: 'Sylphy-API', 
-    url: `https://sylphy.xyz/download/v2/ytmp3?url=`,
-    params: '&api_key=Stellar',
-    getAudioUrl: (data) => data?.result?.dl_url,
-    getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail, 
-    getDuration: (data) => data?.result?.duration
-  },
-  { 
-    name: 'Adonix', 
-    url: `https://api-adonix.ultraplus.click/download/ytaudio?apikey=AdonixKey2lph3k2117&url=`,
-    getAudioUrl: (data) => data?.data?.url,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration
-  },
-  { 
     name: 'FAA-ytplay',           
     url: `https://api-faa.my.id/faa/ytplay?query=`,
     getAudioUrl: (data) => data?.result?.mp3,
@@ -57,7 +32,7 @@ const APIS = [
   { 
     name: 'Stellar-v2-Yuki', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
-    params: '&key=YukiWaBot',
+    params: 'stellarwa-2026.xyz@maia@20-12-2025',
     getAudioUrl: (data) => data?.data?.download,
     getTitle: (data) => data?.data?.title,
     getThumb: (data) => data?.data?.thumbnail,
