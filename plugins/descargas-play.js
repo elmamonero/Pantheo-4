@@ -5,7 +5,7 @@ import yts from 'yt-search';
 // CONFIGURACIÓN: Espera rápida de 3.5 segundos por API antes de pasar a la otra
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 10000; 
+const API_TIMEOUT = 7000; 
 
 // Función para formatear duración
 function formatDuration(duration) {
