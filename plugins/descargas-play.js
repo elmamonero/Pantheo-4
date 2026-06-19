@@ -1,123 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import yts from 'yt-search';
-
-// Configuración de límites y tiempos
-const MAX_SIZE_MB = 250;
-const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 10000; // 10 segundos por API
-
-// Función para formatear duración
-function formatDuration(duration) {
-  if (!duration) return '00:00';
-  if (typeof duration === 'string' && duration.includes(':')) return duration;
-  
-  const seconds = parseInt(duration);
-  if (isNaN(seconds)) return '00:00';
-  
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-const APIS = [
-  { 
-    name: 'Delirius-Download', 
-    url: `https://api.delirius.store/download/ytmp3?url=`,
-    // No requiere parámetro key/apikey adicional en la URL según tu ejemplo
-    getAudioUrl: (data) => data?.data?.download?.url || data?.result?.download || data?.data?.url,
-    getTitle: (data) => data?.data?.title || data?.result?.title,
-    getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
-    getDuration: (data) => data?.data?.duration || data?.result?.duration
-  },
-  { 
-    name: 'Stellar-v2-Yuki', 
-    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
-    params: 'stellarwa-2026.xyz@maia@20-12-2025',
-    getAudioUrl: (data) => data?.result?.dl || data?.data?.download,
-    getTitle: (data) => data?.result?.title || data?.data?.title,
-    getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
-    getDuration: (data) => data?.result?.duration || data?.data?.duration
-  },
-  { 
-    name: 'Yuki', 
-    url: `https://api.yuki-wabot.my.id/dl/youtubeplay?query=`,
-    params: 'YukiBot-MD',
-    getAudioUrl: (data) => data?.result?.dl || data?.data?.download,
-    getTitle: (data) => data?.result?.title || data?.data?.title,
-    getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
-    getDuration: (data) => data?.result?.duration || data?.data?.duration
-  },
-  { 
-    name: 'FAA-ytplay',           
-    url: `https://api-faa.my.id/faa/ytplay?query=`,
-    getAudioUrl: (data) => data?.result?.mp3,
-    getTitle: (data) => data?.result?.title,
-    getThumb: (data) => data?.result?.thumbnail || data?.result?.thumb,
-    getDuration: (data) => data?.result?.duration
-  },
-];
-
-async function getAudioFromApis(url) {
-  for (const api of APIS) {
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), API_TIMEOUT);
-
-    console.log(`\x1b[36m[YT-PLAY]\x1b[0m Intentando descargar con la API: ${api.name}...`);
-
-    try {
-      const encodedUrl = encodeURIComponent(url);
-      
-      // Delirius no usa el parámetro '&key=', las otras sí.
-      // Si la API tiene definidos params, se le agrega '&key=', de lo contrario va vacío.
-      const apiKeyParam = api.params ? `&key=${api.params}` : '';
-      const apiUrl = `${api.url}${encodedUrl}${apiKeyParam}`;
-      
-      const response = await fetch(apiUrl, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Accept': 'application/json'
-        }
-      });
-
-      clearTimeout(id);
-
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Validamos si la respuesta contiene estructura correcta (status true o tiene data/result)
-        if (data?.status !== true && data?.status !== 'true' && !data?.result && !data?.data) {
-          console.log(`\x1b[33m[⚠️ API ${api.name}]\x1b[0m Respuesta inválida o vacía. Probando siguiente...`);
-          continue;
-        }
-        
-        const audioUrl = api.getAudioUrl(data);
-        if (audioUrl) {
-          console.log(`\x1b[32m[✅ ÉXITO]\x1b[0m Audio obtenido con la API: ${api.name}`);
-          return {
-            success: true,
-            apiName: api.name,
-            title: api.getTitle(data),
-            thumbnail: api.getThumb(data),
-            url: audioUrl,
-            duration: formatDuration(api.getDuration(data))
-          };
-        }
-      } else {
-        console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Error HTTP ${response.status}. Saltando...`);
-      }
-    } catch (e) {
-      console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Falló por timeout o red.`);
-      continue;
-    } finally {
-      clearTimeout(id);
-    }
-  }
-  console.log(`\x1b[41m[🚫 ERROR TOTAL]\x1b[0m Ninguna API respondió.`);
-  return { success: false };
-}
-
 const handler = async (m, { conn, args }) => {
   if (!args[0]) return m.reply('¿Qué canción buscamos hoy? Ingresa el nombre o el enlace.');
 
@@ -130,14 +10,16 @@ const handler = async (m, { conn, args }) => {
     const searchResults = await yts(query);
     if (searchResults.videos.length) {
       searchData = searchResults.videos[0];
-      if (!isUrl) url = searchData.url; // Aquí se convierte el nombre a enlace real de YouTube
+      
+      // OPTIMIZACIÓN: Siempre usamos la URL directa y limpia del video que genera 'yt-search'
+      url = searchData.url; 
     }
 
     if (!url) return m.reply('No encontré resultados para esa búsqueda.');
 
     await m.react('🎧');
 
-    // Pasa la URL purificada (sea link directo o extraída del nombre) a las APIs
+    // Ahora la URL va 100% limpia sin parámetros raros de YouTube
     let apiResult = await getAudioFromApis(url);
 
     if (!apiResult.success) {
@@ -151,7 +33,6 @@ const handler = async (m, { conn, args }) => {
     const channel = searchData?.author?.name || 'Canal de YouTube';
     const audioUrl = apiResult.url;
     
-    // Formato visual de Pantheon
     const caption = `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
@@ -189,9 +70,3 @@ const handler = async (m, { conn, args }) => {
     m.reply(`⚠️ **Aviso:** ${error.message}`);
   }
 };
-
-handler.help = ['play <nombre|URL>'];
-handler.command = ['play'];
-handler.tags = ['descargas'];
-
-export default handler;
