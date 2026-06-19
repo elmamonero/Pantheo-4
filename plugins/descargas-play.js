@@ -153,7 +153,7 @@ const handler = async (m, { conn, args }) => {
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
                     `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
                     `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
-                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈̣t`;
+                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡ot`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     const audioResponse = await fetch(audioUrl);
