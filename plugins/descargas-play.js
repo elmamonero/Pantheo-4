@@ -22,9 +22,18 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
+    name: 'Delirius-Download', 
+    url: `https://api.delirius.store/download/ytmp3?url=`,
+    // No requiere parámetro key/apikey adicional en la URL según tu ejemplo
+    getAudioUrl: (data) => data?.data?.download?.url || data?.result?.download || data?.data?.url,
+    getTitle: (data) => data?.data?.title || data?.result?.title,
+    getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
+    getDuration: (data) => data?.data?.duration || data?.result?.duration
+  },
+  { 
     name: 'Stellar-v2-Yuki', 
     url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
-    params: 'stellarwa-2026.xyz@maia@20-12-2025', // Tu nueva APIKey de Stellar
+    params: 'stellarwa-2026.xyz@maia@20-12-2025',
     getAudioUrl: (data) => data?.result?.dl || data?.data?.download,
     getTitle: (data) => data?.result?.title || data?.data?.title,
     getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
@@ -59,7 +68,8 @@ async function getAudioFromApis(url) {
     try {
       const encodedUrl = encodeURIComponent(url);
       
-      // Se estructura usando '&key=' como requiere el formato de estos servidores
+      // Delirius no usa el parámetro '&key=', las otras sí.
+      // Si la API tiene definidos params, se le agrega '&key=', de lo contrario va vacío.
       const apiKeyParam = api.params ? `&key=${api.params}` : '';
       const apiUrl = `${api.url}${encodedUrl}${apiKeyParam}`;
       
@@ -76,7 +86,8 @@ async function getAudioFromApis(url) {
       if (response.ok) {
         const data = await response.json();
         
-        if (data?.status !== true && data?.status !== 'true' && !data?.result) {
+        // Validamos si la respuesta contiene estructura correcta (status true o tiene data/result)
+        if (data?.status !== true && data?.status !== 'true' && !data?.result && !data?.data) {
           console.log(`\x1b[33m[⚠️ API ${api.name}]\x1b[0m Respuesta inválida o vacía. Probando siguiente...`);
           continue;
         }
@@ -119,14 +130,14 @@ const handler = async (m, { conn, args }) => {
     const searchResults = await yts(query);
     if (searchResults.videos.length) {
       searchData = searchResults.videos[0];
-      if (!isUrl) url = searchData.url;
+      if (!isUrl) url = searchData.url; // Aquí se convierte el nombre a enlace real de YouTube
     }
 
     if (!url) return m.reply('No encontré resultados para esa búsqueda.');
 
     await m.react('🎧');
 
-    // Ejecuta el sistema de balanceo e intentos en cadena
+    // Pasa la URL purificada (sea link directo o extraída del nombre) a las APIs
     let apiResult = await getAudioFromApis(url);
 
     if (!apiResult.success) {
@@ -146,7 +157,7 @@ const handler = async (m, { conn, args }) => {
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
                     `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
                     `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
-                    `⚡ 𝖯𝖺𝗇𝗍ّه𝖾𝗈𝗇 𝖡𝗈̣t`;
+                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈̣t`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     const audioResponse = await fetch(audioUrl);
