@@ -22,22 +22,22 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
+    name: 'Stellar-v2-Yuki', 
+    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
+    params: 'stellarwa-2026.xyz@maia@20-12-2025', // Tu nueva APIKey de Stellar
+    getAudioUrl: (data) => data?.result?.dl || data?.data?.download,
+    getTitle: (data) => data?.result?.title || data?.data?.title,
+    getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
+    getDuration: (data) => data?.result?.duration || data?.data?.duration
+  },
+  { 
     name: 'Yuki', 
     url: `https://api.yuki-wabot.my.id/dl/youtubeplay?query=`,
     params: 'YukiBot-MD',
-    getAudioUrl: (data) => data?.data?.download,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration || data?.data?.timestamp
-  },
-  { 
-    name: 'Stellar-v2-Yuki', 
-    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
-    params: 'api-TKszu',
-    getAudioUrl: (data) => data?.data?.download,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration || data?.data?.timestamp
+    getAudioUrl: (data) => data?.result?.dl || data?.data?.download,
+    getTitle: (data) => data?.result?.title || data?.data?.title,
+    getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
+    getDuration: (data) => data?.result?.duration || data?.data?.duration
   },
   { 
     name: 'FAA-ytplay',           
@@ -54,12 +54,14 @@ async function getAudioFromApis(url) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), API_TIMEOUT);
 
-    // Mensaje en consola indicando qué API se va a intentar usar
     console.log(`\x1b[36m[YT-PLAY]\x1b[0m Intentando descargar con la API: ${api.name}...`);
 
     try {
       const encodedUrl = encodeURIComponent(url);
-      const apiUrl = `${api.url}${encodedUrl}${api.params || ''}`;
+      
+      // Se estructura usando '&key=' como requiere el formato de estos servidores
+      const apiKeyParam = api.params ? `&key=${api.params}` : '';
+      const apiUrl = `${api.url}${encodedUrl}${apiKeyParam}`;
       
       const response = await fetch(apiUrl, {
         signal: controller.signal,
@@ -74,16 +76,14 @@ async function getAudioFromApis(url) {
       if (response.ok) {
         const data = await response.json();
         
-        // Si la API responde pero su estado interno es falso o no trae resultados
         if (data?.status !== true && data?.status !== 'true' && !data?.result) {
-          console.log(`\x1b[33m[⚠️ API ${api.name}]\x1b[0m Respuesta inválida del servidor. Probando con la siguiente API...`);
+          console.log(`\x1b[33m[⚠️ API ${api.name}]\x1b[0m Respuesta inválida o vacía. Probando siguiente...`);
           continue;
         }
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
-          // Mensaje de éxito en la consola
-          console.log(`\x1b[32m[✅ ÉXITO]\x1b[0m Audio obtenido exitosamente usando la API: ${api.name}`);
+          console.log(`\x1b[32m[✅ ÉXITO]\x1b[0m Audio obtenido con la API: ${api.name}`);
           return {
             success: true,
             apiName: api.name,
@@ -94,18 +94,16 @@ async function getAudioFromApis(url) {
           };
         }
       } else {
-        console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Error HTTP ${response.status}. Saltando a la siguiente...`);
+        console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Error HTTP ${response.status}. Saltando...`);
       }
     } catch (e) {
-      // Captura caídas de servidores, timeouts o bloqueos de ApiKey
-      console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Falló por Timeout o Conexión. Probando la siguiente fuente...`);
+      console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Falló por timeout o red.`);
       continue;
     } finally {
       clearTimeout(id);
     }
   }
-  
-  console.log(`\x1b[41m[🚫 ERROR TOTAL]\x1b[0m Ninguna de las APIs configuradas respondió con éxito.`);
+  console.log(`\x1b[41m[🚫 ERROR TOTAL]\x1b[0m Ninguna API respondió.`);
   return { success: false };
 }
 
@@ -128,7 +126,7 @@ const handler = async (m, { conn, args }) => {
 
     await m.react('🎧');
 
-    // Sistema de balanceo por lentitud (10 segundos)
+    // Ejecuta el sistema de balanceo e intentos en cadena
     let apiResult = await getAudioFromApis(url);
 
     if (!apiResult.success) {
@@ -142,13 +140,13 @@ const handler = async (m, { conn, args }) => {
     const channel = searchData?.author?.name || 'Canal de YouTube';
     const audioUrl = apiResult.url;
     
-    // Nuevo formato visual exclusivo de Pantheon
+    // Formato visual de Pantheon
     const caption = `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
-                    `↳ 👤 *𝖢𝖺𝗇𝖺ല്‍:* ${channel}\n` +
-                    `↳ 🔗 *𝖤𝗇联𝖺𝖼𝖾:* ${url}\n\n` +
-                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍`;
+                    `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
+                    `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
+                    `⚡ 𝖯𝖺𝗇𝗍ّه𝖾𝗈𝗇 𝖡𝗈̣t`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
     const audioResponse = await fetch(audioUrl);
