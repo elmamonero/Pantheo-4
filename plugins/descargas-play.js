@@ -22,6 +22,15 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
+    name: 'Stellar-v2-Yuki', 
+    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
+    params: 'api-TKszu',
+    getAudioUrl: (data) => data?.data?.download,
+    getTitle: (data) => data?.data?.title,
+    getThumb: (data) => data?.data?.thumbnail,
+    getDuration: (data) => data?.data?.duration || data?.data?.timestamp
+  },
+   { 
     name: 'FAA-ytplay',           
     url: `https://api-faa.my.id/faa/ytplay?query=`,
     getAudioUrl: (data) => data?.result?.mp3,
@@ -29,15 +38,6 @@ const APIS = [
     getThumb: (data) => data?.result?.thumbnail || data?.result?.thumb,
     getDuration: (data) => data?.result?.duration
   },
-  { 
-    name: 'Stellar-v2-Yuki', 
-    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
-    params: 'stellarwa-2026.xyz@maia@20-12-2025',
-    getAudioUrl: (data) => data?.data?.download,
-    getTitle: (data) => data?.data?.title,
-    getThumb: (data) => data?.data?.thumbnail,
-    getDuration: (data) => data?.data?.duration || data?.data?.timestamp
-  }
 ];
 
 async function getAudioFromApis(url) {
