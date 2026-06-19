@@ -39,7 +39,7 @@ const APIS = [
     getThumb: (data) => data?.data?.thumbnail,
     getDuration: (data) => data?.data?.duration || data?.data?.timestamp
   },
-   { 
+  { 
     name: 'FAA-ytplay',           
     url: `https://api-faa.my.id/faa/ytplay?query=`,
     getAudioUrl: (data) => data?.result?.mp3,
@@ -53,6 +53,9 @@ async function getAudioFromApis(url) {
   for (const api of APIS) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+    // Mensaje en consola indicando qué API se va a intentar usar
+    console.log(`\x1b[36m[YT-PLAY]\x1b[0m Intentando descargar con la API: ${api.name}...`);
 
     try {
       const encodedUrl = encodeURIComponent(url);
@@ -70,10 +73,17 @@ async function getAudioFromApis(url) {
 
       if (response.ok) {
         const data = await response.json();
-        if (data?.status !== true && data?.status !== 'true' && !data?.result) continue;
+        
+        // Si la API responde pero su estado interno es falso o no trae resultados
+        if (data?.status !== true && data?.status !== 'true' && !data?.result) {
+          console.log(`\x1b[33m[⚠️ API ${api.name}]\x1b[0m Respuesta inválida del servidor. Probando con la siguiente API...`);
+          continue;
+        }
         
         const audioUrl = api.getAudioUrl(data);
         if (audioUrl) {
+          // Mensaje de éxito en la consola
+          console.log(`\x1b[32m[✅ ÉXITO]\x1b[0m Audio obtenido exitosamente usando la API: ${api.name}`);
           return {
             success: true,
             apiName: api.name,
@@ -83,13 +93,19 @@ async function getAudioFromApis(url) {
             duration: formatDuration(api.getDuration(data))
           };
         }
+      } else {
+        console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Error HTTP ${response.status}. Saltando a la siguiente...`);
       }
     } catch (e) {
+      // Captura caídas de servidores, timeouts o bloqueos de ApiKey
+      console.log(`\x1b[31m[❌ API ${api.name}]\x1b[0m Falló por Timeout o Conexión. Probando la siguiente fuente...`);
       continue;
     } finally {
       clearTimeout(id);
     }
   }
+  
+  console.log(`\x1b[41m[🚫 ERROR TOTAL]\x1b[0m Ninguna de las APIs configuradas respondió con éxito.`);
   return { success: false };
 }
 
@@ -130,8 +146,8 @@ const handler = async (m, { conn, args }) => {
     const caption = `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
-                    `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
-                    `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
+                    `↳ 👤 *𝖢𝖺𝗇𝖺ല്‍:* ${channel}\n` +
+                    `↳ 🔗 *𝖤𝗇联𝖺𝖼𝖾:* ${url}\n\n` +
                     `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
