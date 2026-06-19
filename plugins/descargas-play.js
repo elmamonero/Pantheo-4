@@ -2,10 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
-// Configuración de límites y tiempos
+// CONFIGURACIÓN: Espera rápida de 3.5 segundos por API antes de pasar a la otra
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 10000; // 10 segundos por API
+const API_TIMEOUT = 3500; 
 
 // Función para formatear duración
 function formatDuration(duration) {
@@ -24,7 +24,8 @@ const APIS = [
   { 
     name: 'Delirius-Download', 
     url: `https://api.delirius.store/download/ytmp3?url=`,
-    getAudioUrl: (data) => data?.data?.download?.url || data?.result?.download || data?.data?.url,
+    // ARREGLADO: Ahora extrae correctamente data?.data?.download que es donde viene tu link de savetube
+    getAudioUrl: (data) => data?.data?.download || data?.result?.download || data?.data?.url,
     getTitle: (data) => data?.data?.title || data?.result?.title,
     getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
     getDuration: (data) => data?.data?.duration || data?.result?.duration
@@ -67,7 +68,6 @@ async function getAudioFromApis(url) {
     try {
       const encodedUrl = encodeURIComponent(url);
       
-      // Si la API tiene parámetros definidos (como Stellar o Yuki), se les concatena '&key='
       const apiKeyParam = api.params ? `&key=${api.params}` : '';
       const apiUrl = `${api.url}${encodedUrl}${apiKeyParam}`;
       
@@ -84,7 +84,6 @@ async function getAudioFromApis(url) {
       if (response.ok) {
         const data = await response.json();
         
-        // Comprobar que la respuesta traiga datos válidos
         if (data?.status !== true && data?.status !== 'true' && !data?.result && !data?.data) {
           console.log(`\x1b[33m[⚠️ API ${api.name}]\x1b[0m Respuesta inválida o vacía. Probando siguiente...`);
           continue;
@@ -128,8 +127,6 @@ const handler = async (m, { conn, args }) => {
     const searchResults = await yts(query);
     if (searchResults.videos.length) {
       searchData = searchResults.videos[0];
-      
-      // OPTIMIZACIÓN CRÍTICA: Se limpia el enlace usando el resultado directo de yt-search
       url = searchData.url; 
     }
 
@@ -137,7 +134,6 @@ const handler = async (m, { conn, args }) => {
 
     await m.react('🎧');
 
-    // Procesar la solicitud a través del balanceador de APIs
     let apiResult = await getAudioFromApis(url);
 
     if (!apiResult.success) {
