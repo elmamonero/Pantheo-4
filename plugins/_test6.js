@@ -18,7 +18,7 @@ if (!global.scheduledTasks) {
     global.scheduledTasks = {};
 }
 
-async function handleGrupoCommand(client, msg, args) {
+async function handleGrupoPruebaCommand(client, msg, args) {
     const from = msg.key.remoteJid;
     const isGroup = from.endsWith('@g.us');
 
@@ -26,18 +26,18 @@ async function handleGrupoCommand(client, msg, args) {
         return client.sendMessage(from, { text: '❌ Este comando solo puede ser utilizado en grupos.' }, { quoted: msg });
     }
 
-    // Verificar que existan los parámetros mínimos para la nueva estructura
-    // args[0] debe ser 'prueba', args[1] la acción ('abrir'/'cerrar'), args[2] la hora, args[3] el país
-    if (args.length < 4 || args[0].toLowerCase() !== 'prueba') {
-        return client.sendMessage(from, { text: '⚙️ *Uso correcto:*\n`.grupo prueba abrir 10:35 cl`\n`.grupo prueba cerrar 23:56 ar`' }, { quoted: msg });
+    // Verificar que existan los parámetros mínimos para la estructura pegada
+    // args[0] es la acción ('abrir'/'cerrar'), args[1] la hora, args[2] el país
+    if (args.length < 3) {
+        return client.sendMessage(from, { text: '⚙️ *Uso correcto:*\n`.grupoprueba abrir 10:35 cl`\n`.grupoprueba cerrar 23:56 ar`' }, { quoted: msg });
     }
 
-    const accion = args[1].toLowerCase(); // 'abrir' o 'cerrar'
-    const horaInput = args[2]; // 'HH:MM'
-    const paisCodigo = args[3].toLowerCase(); // 'pe', 'cl', 'ar', etc.
+    const accion = args[0].toLowerCase(); // 'abrir' o 'cerrar'
+    const horaInput = args[1]; // 'HH:MM'
+    const paisCodigo = args[2].toLowerCase(); // 'pe', 'cl', 'ar', etc.
 
     if (accion !== 'abrir' && accion !== 'cerrar') {
-        return client.sendMessage(from, { text: '❌ Acción inválida. Usa *abrir* o *cerrar* después de "prueba".' }, { quoted: msg });
+        return client.sendMessage(from, { text: '❌ Acción inválida. Usa *abrir* o *cerrar*.' }, { quoted: msg });
     }
 
     // Validar formato de hora (HH:MM)
@@ -86,9 +86,9 @@ async function handleGrupoCommand(client, msg, args) {
 
     // Nombres estéticos para el mensaje de confirmación
     const paisesNombres = { 'pe': 'Perú 🇵🇪', 'cl': 'Chile 🇨🇱', 'ar': 'Argentina 🇦🇷', 've': 'Venezuela 🇻🇪', 'co': 'Colombia 🇨🇴', 'mx': 'México 🇲🇽', 'es': 'España 🇪🇸' };
-    const paisNombre = countriesNames[paisCodigo] || paisCodigo.toUpperCase();
+    const paisNombre = paisesNombres[paisCodigo] || paisCodigo.toUpperCase();
 
-    // Mensaje de éxito al estilo del bot de tu imagen
+    // Mensaje de éxito al estilo del bot de la imagen "71084.jpg"
     const responseText = `✅ *Programación establecida correctamente.*\n\n` +
                          `⌒ Action › *${accion.charAt(0).toUpperCase() + accion.slice(1)}*\n` +
                          `め Hour › *${horaInput}*\n` +
@@ -97,4 +97,4 @@ async function handleGrupoCommand(client, msg, args) {
     await client.sendMessage(from, { text: responseText }, { quoted: msg });
 }
 
-module.exports = { handleGrupoCommand };
+module.exports = { handleGrupoPruebaCommand };
