@@ -85,7 +85,7 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
 
   await m.react('✅');
 
-  // Nombres estéticos para el mensaje de confirmación siguiendo el estilo de la imagen 71084.jpg
+  // Nombres estéticos para el mensaje de configuración siguiendo el estilo de la imagen 71084.jpg
   const paisesNombres = { 'pe': 'Perú 🇵🇪', 'cl': 'Chile 🇨🇱', 'ar': 'Argentina 🇦🇷', 've': 'Venezuela 🇻🇪', 'co': 'Colombia 🇨🇴', 'mx': 'México 🇲🇽', 'es': 'España 🇪🇸' };
   const paisNombre = paisesNombres[paisCodigo] || paisCodigo.toUpperCase();
 
@@ -99,6 +99,7 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
 
 handler.help = ['grupoprueba'];
 handler.tags = ['grupo'];
-handler.command = /^(grupoprueba)$/i;
+// Aseguramos la expresión regular para que acepte "grupoprueba" de forma estricta e independiente del prefijo
+handler.command = /^grupoprueba$/i;
 
 export default handler;
