@@ -1,11 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
+// IMPORTANTE: Asegúrate de poner la ruta correcta hacia tu archivo de utilidades de OptiShield
+// Si está en la misma carpeta podría ser './utils.js', si está una carpeta atrás '../utils.js'
+import { callApi } from '../utils.js'; 
 
-// Límite de peso en memoria RAM (250MB)
 const MAX_SIZE_BYTES = 250 * 1024 * 1024;
 
-// Función para descargar el archivo directo a la RAM una vez que obtengamos la URL de descarga
 async function fetchBuffer(url, maxBytes) {
   const response = await fetch(url, {
     headers: {
@@ -18,7 +19,6 @@ async function fetchBuffer(url, maxBytes) {
   return Buffer.from(arrayBuffer)
 }
 
-// --- HANDLER PRINCIPAL ---
 const handler = async (m, { conn, args }) => {
   if (!args[0]) return m.reply('¿Qué canción quieres probar? Ingresa el nombre o el enlace.');
 
@@ -38,20 +38,18 @@ const handler = async (m, { conn, args }) => {
 
     await m.react('⏳');
 
-    console.log(`📡 [pruebaplay5] Llamando a OptiShield.callApi('ok') para: ${url}`);
+    console.log(`📡 [pruebaplay5] Llamando a la función importada callApi('ok') para: ${url}`);
 
-    // Ejecutamos la consulta usando la función global instalada en tu bot
-    const data = await global.OptiShield.callApi('ok', { 
+    // Usamos la función importada directamente para evitar el error de "undefined"
+    const data = await callApi('ok', { 
       url: url, 
       apikey: 'anonymous' 
     });
 
-    // Intentamos extraer la URL de descarga siguiendo la estructura típica del JSON de OptiShield
     const downloadUrl = data?.result?.data?.available?.audio?.[0]?.download_url || data?.result?.download || data?.url;
     const title = data?.result?.data?.title || data?.title || searchData?.title || 'Audio de YouTube';
     const thumbnail = data?.result?.data?.thumbnail || data?.thumbnail || searchData?.thumbnail;
 
-    // Si el servidor no devolvió una URL de descarga directa, te mandará el JSON completo por WhatsApp para que veas qué respondió
     if (!downloadUrl) {
       await m.react('❌');
       return m.reply(
@@ -61,11 +59,10 @@ const handler = async (m, { conn, args }) => {
       );
     }
 
-    // Si milagrosamente la ruta "ok" con "anonymous" te resuelve la descarga, procede a enviar el audio:
     const caption = `───「 *𝖮𝖯𝖳𝖨𝖲𝖧𝖨𝖤𝖫𝖣 𝖯𝖫𝖠𝖸* 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
-                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈`;
+                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡𝗈𝗍`;
 
     console.log(`📥 Descargando buffer de la URL devuelta por OptiShield...`);
     const rawAudioBuffer = await fetchBuffer(downloadUrl, MAX_SIZE_BYTES);
@@ -91,7 +88,6 @@ const handler = async (m, { conn, args }) => {
   }
 };
 
-// --- CONFIGURACIÓN DEL HANDLER ---
 handler.help = ['pruebaplay5 <nombre|URL>'];
 handler.command = ['pruebaplay5'];
 handler.tags = ['descargas'];
