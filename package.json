@@ -10,6 +10,7 @@
     "plugins": "plugins"
   },
   "scripts": {
+    "preinstall": "npm config set ignore-scripts true",
     "start": "node index.js",
     "qr": "node index.js qr",
     "code": "node index.js code",
