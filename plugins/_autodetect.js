@@ -13,24 +13,38 @@ export async function before(m, { conn, participants, groupMetadata }) {
   let usuario = `@${m.sender.split`@`[0]}`
   let pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null) || 'https://files.catbox.moe/xr2m6u.jpg'  
 
-  // Validar y limpiar el JID del usuario afectado en las acciones (promover, degradar, aceptar)
-  let afectadoJid = m.messageStubParameters && m.messageStubParameters[0] ? m.messageStubParameters[0] : ''
-  if (afectadoJid && !afectadoJid.includes('@s.whatsapp.net')) {
-    afectadoJid = afectadoJid.split('@')[0] + '@s.whatsapp.net'
+  // --- EXTRACCIÓN ULTRA SEGURA PARA NUEVAS VERSIONES DE BAILEYS ---
+  let afectadoJid = ''
+  if (m.messageStubParameters && m.messageStubParameters[0]) {
+    afectadoJid = m.messageStubParameters[0]
+  } else if (m.msg && m.msg.participants && m.msg.participants[0]) {
+    afectadoJid = m.msg.participants[0]
+  } else if (m.message?.groupParticipantUpdateMessage?.participants?.length) {
+    afectadoJid = m.message.groupParticipantUpdateMessage.participants[0]
   }
-  let afectadoTarget = afectadoJid ? `@${afectadoJid.split('@')[0]}` : '@undefined'
+
+  // Si no se encuentra nada, se usa el sender por seguridad para evitar crasheos
+  if (!afectadoJid) afectadoJid = m.sender || ''
+
+  // Forzar formato correcto @s.whatsapp.net si solo viene el número
+  if (afectadoJid && !afectadoJid.includes('@')) {
+    afectadoJid = afectadoJid.trim() + '@s.whatsapp.net'
+  }
+
+  let afectadoTarget = afectadoJid ? `@${afectadoJid.split('@')[0]}` : `@${m.sender.split('@')[0]}`
+  // -----------------------------------------------------------------
 
   let nombre, foto, edit, newlink, status, admingp, noadmingp, aceptar
   
-  nombre = `*${usuario}*\n*Ha cambiado el nombre del grupo.*\n\n*🧃 Ahora el grupo se llama:*\n> *${m.messageStubParameters[0] || ''}*.`
+  nombre = `*${usuario}*\n*Ha cambiado el nombre del grupo.*\n\n*🧃 Ahora el grupo se llama:*\n> *${m.messageStubParameters && m.messageStubParameters[0] ? m.messageStubParameters[0] : ''}*.`
 
   foto = `*${usuario}*\n*Ha cambiado la imagen del grupo.*`
 
-  edit = `*${usuario}*\n*Ha permitido que ${m.messageStubParameters[0] == 'on' ? 'solo admins' : 'todos'} puedan configurar el grupo.*`
+  edit = `*${usuario}*\n*Ha permitido que ${m.messageStubParameters && m.messageStubParameters[0] == 'on' ? 'solo admins' : 'todos'} puedan configurar el grupo.*`
 
   newlink = `*⛓️‍💥 El enlace del grupo ha sido restablecido por:*\n*${usuario}*`
 
-  status = `*☕ El grupo ha sido ${m.messageStubParameters[0] == 'on' ? '`cerrado` 🔒' : '`abierto` 🔓'}*\n*Por: ${usuario}*\n\n🌷 Ahora ${m.messageStubParameters[0] == 'on' ? '*solo admins*' : '*todos*'} pueden enviar mensaje...`
+  status = `*☕ El grupo ha sido ${m.messageStubParameters && m.messageStubParameters[0] == 'on' ? '`cerrado` 🔒' : '`abierto` 🔓'}*\n*Por: ${usuario}*\n\n🌷 Ahora ${m.messageStubParameters && m.messageStubParameters[0] == 'on' ? '*solo admins*' : '*todos*'} pueden enviar mensaje...`
 
   admingp = `*${afectadoTarget} Ahora es admin del grupo. 👻*\n\n*☕ Acción hecha por:*\n*${usuario}*`
 
