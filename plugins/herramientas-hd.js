@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 import fetch from "node-fetch"
-import Jimp from "jimp"
+import { Jimp } from "jimp"
 import FormData from "form-data"
 import { fileURLToPath } from "url"
 
