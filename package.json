@@ -27,6 +27,7 @@
     "jsdom": "^20.0.1",
     "link-preview-js": "^3.0.0",
     "lodash": "^4.17.21",
+    "boxen": "^8.0.1"
     "mime-types": "^2.1.35",
     "moment-timezone": "^0.5.37",
     "node-cache": "^5.1.2",
