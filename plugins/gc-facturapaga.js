@@ -120,3 +120,4 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
 handler.command = ["facturapaga", "facpaga"];
 handler.owner = true;
 export default handler;
+*/
