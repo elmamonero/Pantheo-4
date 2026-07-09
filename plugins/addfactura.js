@@ -1,4 +1,4 @@
-import fs from "fs";
+/*import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createCanvas, loadImage } from "canvas";
@@ -160,3 +160,4 @@ const handler = async (msg, { conn, args, command, isOwner, rowner, wa }) => {
 handler.command = ["addfactura"];
 handler.owner = true;
 export default handler;
+*/
