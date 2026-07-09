@@ -1,4 +1,4 @@
-import fs from "fs";
+//import fs from "fs";
 import path from "path";
 import { createCanvas, loadImage } from "canvas";
 
@@ -117,6 +117,6 @@ const handler = async (msg, { conn, args, command, isOwner, rowner }) => {
   }
 };
 
-handler.command = ["facturapaga", "facpaga"];
-handler.owner = true;
-export default handler;
+//handler.command = ["facturapaga", "facpaga"];
+//handler.owner = true;
+//export default handler;
