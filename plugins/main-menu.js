@@ -4,7 +4,7 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
   try {
     await m.react('🧡');
 
-    let img = 'https://cdn.russellxz.click/3cf1a4dc.jpg';
+    let img = 'https://cdn.russellxz.click/86eb0211.jpg';
     let insta = 'https://chat.whatsapp.com/HvDCvNqXSiW19MFXJmWhoF';
 
     const _uptime = process.uptime() * 1000;

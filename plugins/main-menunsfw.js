@@ -1,6 +1,6 @@
 let handler = async (m, { isPrems, conn }) => {
 
-let img = 'https://cdn.russellxz.click/3cf1a4dc.jpg' 
+let img = 'https://cdn.russellxz.click/86eb0211.jpg' 
 let texto = `• 𝐌𝐄𝐍𝐔 +18 •
 「 🔞 *COMANDOS NOPOR* 🔞 」
 
