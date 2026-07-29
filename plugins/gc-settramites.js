@@ -1,59 +1,57 @@
 import fs from 'fs';
 
-// Handler para el comando de stock  
-const handler = async (m, { conn, text, chat }) => {  
-  const datas = global;  
-  const idioma = datas.db.data.users[m.sender].language || global.defaultLenguaje;  
+const handler = async (m, { conn, text }) => {
+  const chatId = m.chat;
 
-  // Obtener el ID del grupo o chat actual  
-  const chatId = m.chat;  
+  if (!global.db.data.tramites) {
+    global.db.data.tramites = {};
+  }
 
-  // Inicializar stock para este grupo si no existe  
-  if (!global.db.data.stock) {  
-    global.db.data.stock = {};  
-  }  
-  if (!global.db.data.stock[chatId]) {  
-    global.db.data.stock[chatId] = {};  
-  }  
+  if (!global.db.data.tramites[chatId]) {
+    global.db.data.tramites[chatId] = [];
+  }
 
-  const groupStock = global.db.data.stock[chatId]; // Stock específico del grupo  
+  const groupTramites = global.db.data.tramites[chatId];
 
-  // Comando para consultar el stock  
-  if (m.text.startsWith('.stock')) {  
-    if (Object.keys(groupStock).length === 0) {  
-      m.reply("🧑‍💼✨ **𝐈𝐧𝐯𝐞𝐧𝐭𝐚𝐫𝐢𝐨 𝐯𝐚𝐜𝐢𝐨** ✨"); // Mensaje si no hay productos  
-      return;  
-    }  
+  // Ver trámites
+  if (m.text.startsWith('.tramites')) {
+    if (groupTramites.length === 0) {
+      m.reply('🧑‍💼✨ *No hay trámites registrados* ✨');
+      return;
+    }
 
-    let stockMessage = '';  
-    for (const product in groupStock) {  
-      stockMessage += `${product}\n`; // Agregar solo el nombre del producto  
-    }  
+    const lista = groupTramites.map((tramite, i) => `${i + 1}. ${tramite}`).join('\n');
+    m.reply(`📋 *Trámites registrados:*\n\n${lista}`);
+    return;
+  }
 
-    m.reply(stockMessage.trim()); // Enviar la lista de stocks sin otro texto adicional  
-    return;  
-  }  
+  // Agregar trámite
+  if (m.text.startsWith('.settramites')) {
+    if (!text) {
+      m.reply('𝙀𝙨𝙘𝙧𝙞𝙗𝙚 𝙪𝙣 𝙩𝙧á𝙢𝙞𝙩𝙚.');
+      return;
+    }
 
-  // Comando para establecer el stock  
-  if (m.text.startsWith('.settramites')) {  
-    if (!text) {  
-      m.reply("𝙀𝙨𝙘𝙧𝙞𝙗𝙚 𝙩𝙪 𝙨𝙩𝙤𝙘𝙠📦."); // Mensaje de uso correcto  
-      return;  
-    }  
+    const tramite = text.trim();
+    global.db.data.tramites[chatId].push(tramite);
 
-    const product = text; // Usar todo el texto como producto  
+    fs.writeFileSync('./database.json', JSON.stringify(global.db, null, 2));
+    m.reply(`✅ Trámite agregado correctamente.`);
+    return;
+  }
 
-    // Eliminar stocks anteriores y agregar el nuevo producto al stock
-    global.db.data.stock[chatId] = {}; // Reiniciar el stock específico del grupo  
-    global.db.data.stock[chatId][product] = true; // Almacenar el producto como existente  
-    fs.writeFileSync('./database.json', JSON.stringify(global.db)); // Guardar los cambios en la base de datos
-    m.reply(`𝙎𝙩𝙤𝙘𝙠 𝘼𝙘𝙩𝙪𝙖𝙡𝙞𝙯𝙖𝙙𝙤📦`);  
-  }  
-};  
+  // Limpiar trámites
+  if (m.text.startsWith('.resettramites')) {
+    global.db.data.tramites[chatId] = [];
+    fs.writeFileSync('./database.json', JSON.stringify(global.db, null, 2));
+    m.reply('🗑️ Trámites eliminados correctamente.');
+    return;
+  }
+};
 
-handler.help = ['tramites', 'settramites <producto>', 'resettramites'];  
-handler.tags = ['group'];  
-handler.command = ['tramite', 'settramites', 'resettramites', 'tramites', 'settramite'];  
-handler.admin = true;  
+handler.help = ['tramites', 'settramites <tramite>', 'resettramites'];
+handler.tags = ['group'];
+handler.command = ['tramites', 'settramites', 'resettramites'];
+handler.admin = true;
 
 export default handler;
