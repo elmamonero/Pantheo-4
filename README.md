@@ -1,8 +1,8 @@
-<h1 align="center">Morchi Bot MD</h1>
- <p align="center">Criss Escobar</p>
+<h1 align="center">Pantheon Bot MD</h1>
+ <p align="center">Pantheon Shop</p>
 </p>
 
-![img](https://files.catbox.moe/9xgyvd.jpg)
+![img](https://cdn.russellxz.click/86eb0211.jpg)
 
 [![GROUP OFFICIAL](https://img.shields.io/badge/WhatsApp%20grupo-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://chat.whatsapp.com/GqKwwoV2JJaJDP2SL7SddX) [![GROUP OFFICIAL](https://img.shields.io/badge/WhatsApp%20channel-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VaJxgcB0bIdvuOwKTM2Y)
 
@@ -13,7 +13,7 @@
 </p>
 
 </p>
-<p align="center"><img src="https://profile-counter.glitch.me/{MorchiBot}/count.svg" alt="CrxstianEscobar:: Visitor's Count" /></p>
+<p align="center"><img src="https://profile-counter.glitch.me/{MorchiBot}/count.svg" alt="PantheonShop:: Visitor's Count" /></p>
 
 </p>
 
@@ -37,5 +37,5 @@
 
 ## Creador
 <a href="https://github.com/CrxstianEscobar">
-  <img src="https://files.catbox.moe/0110im.png" width="100px"/>
+  <img src="https://cdn.russellxz.click/86eb0211.jpg" width="100px"/>
 </a>
