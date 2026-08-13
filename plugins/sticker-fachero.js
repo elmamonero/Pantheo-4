@@ -1,5 +1,5 @@
 let handler = async(m, { conn, usedPrefix, command }) => {
-    const stickerUrl = 'https://files.catbox.moe/wy49r0.webp'; 
+    const stickerUrl = 'https://cdn.russellxz.click/67593d34.jpg'; 
     m.react('😎');
 
     await conn.sendFile(m.chat, stickerUrl, 'sticker.webp', '', m, null);
