@@ -22,22 +22,22 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
-    name: 'Delirius-Download', 
-    url: `https://api.delirius.store/download/ytmp3?url=`,
-    // ARREGLADO: Ahora extrae correctamente data?.data?.download que es donde viene tu link de savetube
-    getAudioUrl: (data) => data?.data?.download || data?.result?.download || data?.data?.url,
-    getTitle: (data) => data?.data?.title || data?.result?.title,
-    getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
-    getDuration: (data) => data?.data?.duration || data?.result?.duration
-  },
-  { 
     name: 'Stellar-v2-Yuki', 
-    url: `https://api.stellarwa.xyz/dl/youtubeplay?query=`,
+    url: `https://api.stellarwa.xyz/dl/ytmp3?url=`,
     params: 'stellarwa-2026.xyz@maia@20-12-2025',
     getAudioUrl: (data) => data?.result?.dl || data?.data?.download,
     getTitle: (data) => data?.result?.title || data?.data?.title,
     getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
     getDuration: (data) => data?.result?.duration || data?.data?.duration
+  },
+  { 
+    name: 'Delirius-Download', 
+    url: `https://api.delirius.online/download/ytmp3?url=`,
+    // ARREGLADO: Ahora extrae correctamente data?.data?.download que es donde viene tu link de savetube
+    getAudioUrl: (data) => data?.data?.download || data?.result?.download || data?.data?.url,
+    getTitle: (data) => data?.data?.title || data?.result?.title,
+    getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
+    getDuration: (data) => data?.data?.duration || data?.result?.duration
   },
   { 
     name: 'Yuki', 
