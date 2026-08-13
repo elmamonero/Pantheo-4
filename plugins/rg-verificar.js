@@ -14,7 +14,7 @@ let handler = async function (m, { conn, text, args, usedPrefix, command }) {
     let name2 = conn.getName(m.sender)
     let whe = m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : m.sender
 
-    let perfil = await conn.profilePictureUrl(whe, 'image').catch(_ => 'https://files.catbox.moe/xr2m6u.jpg')
+    let perfil = await conn.profilePictureUrl(whe, 'image').catch(_ => 'https://cdn.russellxz.click/86eb0211.jpg')
 
     if (user.registered === true) {
         return m.reply(`*🍚 Ya te encuentras registrado en mi base de datos.*\n*Si deseas eliminar tu registro usa la función \`#unreg\`*`)
@@ -65,7 +65,7 @@ let handler = async function (m, { conn, text, args, usedPrefix, command }) {
             externalAdReply: {
                 title: '෫໋ׅׄ𝆬🍃ິ⃨ 𝖱𝖾𝗀𝗂𝗌𝗍𝗋𝗈 - 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇  ׄ ׄ𑁍̵ ֕︵۪۪۪۪᷼ ּ',
                 body: club, // Aquí usamos 'club' definido antes
-                thumbnailUrl: 'https://cdn.yupra.my.id/yp/8tu0zf1n.jpg',
+                thumbnailUrl: 'https://cdn.russellxz.click/86eb0211.jpg',
                 sourceUrl: 'https://whatsapp.com/channel/0029Vb1X1TDElah1FEQ4xm0K',
                 mediaType: 1,
                 showAdAttribution: true,
