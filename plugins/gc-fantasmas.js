@@ -23,7 +23,7 @@ total++
 sider.push(member[i])}}}
 if(total == 0) return conn.reply(m.chat, `*[⚔️] En Este Grupo No Hay Fantasmas✨🍷*`, m, rcanal)
 
- const stickerUrl = 'https://files.catbox.moe/agx2sc.webp'; 
+ const stickerUrl = 'https://cdn.russellxz.click/86eb0211.jpg'; 
 m.react('💫')
     await conn.sendFile(m.chat, stickerUrl, 'sticker.webp', '', m, null);
 
