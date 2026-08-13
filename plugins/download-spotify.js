@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const DOWNLOAD_URL = 'https://api.delirius.online/download/spotifydl';
+const DOWNLOAD_URL = 'https://api.yuki-wabot.my.id/dl/spotify';
+const API_KEY = 'YukiBot-MD';
+
+// Esta API se usa únicamente para buscar cuando el usuario escribe texto.
 const SEARCH_URL = 'https://api.delirius.online/search/spotify';
 
 let handler = async (m, { conn, text, usedPrefix, command }) => {
@@ -14,7 +17,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
 │
 │ Ej:
 │ • ${usedPrefix + command} I Can't Stop Me
-│ • ${usedPrefix + command} https://open.spotify.com/track/37ZtpRBkHcaq6hHy0X98zn
+│ • ${usedPrefix + command} https://open.spotify.com/track/3apeXzypBMnUfYcZYNX6DH
 ╰───────═┅═──────`;
 
     return await conn.sendMessage(m.chat, { text: usage }, { quoted: m });
@@ -25,9 +28,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
   try {
     let spotifyUrl = text.trim();
 
-    const isSpotifyUrl = /https?:\/\/(open\.)?spotify\.com\/(track|album|playlist)\//i.test(spotifyUrl);
+    const isSpotifyUrl =
+      /https?:\/\/(open\.)?spotify\.com\/(track|album|playlist)\//i.test(spotifyUrl);
 
-    // Si el usuario escribe texto, busca la primera canción en Spotify
+    // Busca una canción si el usuario escribió un nombre.
     if (!isSpotifyUrl) {
       const { data: search } = await axios.get(SEARCH_URL, {
         params: {
@@ -58,82 +62,92 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       }
     }
 
-    // Descarga usando:
-    // https://api.delirius.online/download/spotifydl?url=ENLACE_SPOTIFY
+    // Yuki API:
+    // https://api.yuki-wabot.my.id/dl/spotify?url=URL_SPOTIFY&key=YukiBot-MD
     const { data: response } = await axios.get(DOWNLOAD_URL, {
       params: {
-        url: spotifyUrl
+        url: spotifyUrl,
+        key: API_KEY
       },
       timeout: 60000
     });
 
-    const data = response?.data || response?.result || response;
+    console.log('Respuesta Yuki Spotify:', response);
+
+    const data = response?.result || response?.data || response;
 
     if (!data) {
-      throw new Error('La API no devolvió datos de la canción.');
+      throw new Error('La API de Yuki no devolvió información.');
     }
 
-    const title = data.title || data.name || 'Canción de Spotify';
-    const author = data.author || data.artist || data.artists || 'Artista desconocido';
-    const duration = data.duration || data.duration_ms || 0;
-    const image = data.image || data.thumbnail || data.cover || '';
-    const download = data.download || data.url || data.audio || data.link;
+    const title = data.title || data.name || data.song || 'Canción de Spotify';
+
+    const author =
+      data.artist ||
+      data.author ||
+      data.artists ||
+      data.creator ||
+      'Artista desconocido';
+
+    const image =
+      data.thumbnail ||
+      data.image ||
+      data.cover ||
+      data.album_art ||
+      '';
+
+    const download =
+      data.download ||
+      data.url ||
+      data.audio ||
+      data.link ||
+      data.mp3;
 
     if (!download) {
-      throw new Error('No se encontró el enlace de descarga del audio.');
+      throw new Error('La API no devolvió un enlace de audio MP3.');
     }
-
-    const formatTime = (time) => {
-      if (!time) return 'Desconocida';
-
-      // Si llega como "3:25", se usa directamente
-      if (typeof time === 'string' && time.includes(':')) return time;
-
-      // Si llega en milisegundos
-      let seconds = Number(time);
-      if (seconds > 10000) seconds = Math.floor(seconds / 1000);
-
-      const minutes = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-
-      return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-    };
 
     const caption = `╭────═[ PANTHEON BOT - MD ]═─────⋆
 │ 🎵 *TÍTULO:* ${title}
 │ 🎙️ *ARTISTA:* ${author}
-│ ⏳ *DURACIÓN:* ${formatTime(duration)}
 │ ✨ *ESTADO:* Enviando audio...
 ╰───────────═┅═──────────`;
 
-    await conn.sendMessage(m.chat, {
-      text: caption,
-      contextInfo: {
-        externalAdReply: {
-          showAdAttribution: true,
-          title: 'Spotify Player',
-          body: author,
-          mediaType: 1,
-          thumbnailUrl: image,
-          sourceUrl: spotifyUrl
+    await conn.sendMessage(
+      m.chat,
+      {
+        text: caption,
+        contextInfo: {
+          externalAdReply: {
+            showAdAttribution: true,
+            title: 'Spotify Player',
+            body: author,
+            mediaType: 1,
+            thumbnailUrl: image,
+            sourceUrl: spotifyUrl
+          }
         }
-      }
-    }, { quoted: m });
+      },
+      { quoted: m }
+    );
 
     const safeName = title
       .replace(/[\\/:*?"<>|]/g, '')
       .slice(0, 35);
 
-    await conn.sendMessage(m.chat, {
-      audio: { url: download },
-      fileName: `${safeName}.mp3`,
-      mimetype: 'audio/mpeg'
-    }, { quoted: m });
+    await conn.sendMessage(
+      m.chat,
+      {
+        audio: { url: download },
+        fileName: `${safeName}.mp3`,
+        mimetype: 'audio/mpeg'
+      },
+      { quoted: m }
+    );
 
     await m.react?.('✅');
-
   } catch (e) {
-    console.error('Error en Spotify Pantheon:', e?.response?.data || e);
+    console.error('Error Spotify Yuki:', e?.response?.data || e);
 
     await m.react?.('❌');
 
@@ -143,12 +157,10 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
       e?.message ||
       'Ocurrió un error desconocido.';
 
-    const errorMsg = `╭────═[ ERROR - PANTHEON ]═─────⋆
+    await m.reply(`╭────═[ ERROR - PANTHEON ]═─────⋆
 │ ${apiError}
 │ Intente con otro nombre o enlace.
-╰───────────═┅═──────────`;
-
-    await m.reply(errorMsg);
+╰───────────═┅═──────────`);
   }
 };
 
