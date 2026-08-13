@@ -1,54 +1,14 @@
-import fetch from 'node-fetch';
-
-const BACKUP_IMAGE = 'https://cdn.russellxz.click/86eb0211.jpg';
-
-const data = {
-  links: {
-    video: [
-      'https://cdn.russellxz.click/a59c40ca.mp4',
-      'https://telegra.ph/file/2bf683bde0b567b04cd91.mp4',
-      'https://telegra.ph/file/57a26cd4514bb619ffbd2.mp4'
-    ],
-    imagen: [
-      'https://cdn.russellxz.click/86eb0211.jpg',
-      'https://cdn.russellxz.click/86eb0211.jpg',
-      'https://cdn.russellxz.click/86eb0211.jpg',
-      'https://cdn.russellxz.click/86eb0211.jpg',
-      'https://cdn.russellxz.click/86eb0211.jpg'
-    ]
-  }
-};
-
-export async function getSafeMediaUrl(url) {
-  if (!url) return BACKUP_IMAGE;
-
-  try {
-    const response = await fetch(url, {
-      method: 'HEAD',
-      signal: AbortSignal.timeout(5000)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    return url;
-  } catch (error) {
-    console.warn(`[Advertencia] Falló el enlace ${url}. Usando respaldo: ${error.message}`);
-    return BACKUP_IMAGE;
-  }
-}
-
-export async function getVerifiedLinks() {
-  const [verifiedVideos, verifiedImages] = await Promise.all([
-    Promise.all(data.links.video.map(getSafeMediaUrl)),
-    Promise.all(data.links.imagen.map(getSafeMediaUrl))
-  ]);
-
-  return {
-    links: {
-      video: verifiedVideos,
-      imagen: verifiedImages
-    }
-  };
-}
+{
+"links": {
+"video": [
+"https://cdn.russellxz.click/a59c40ca.mp4",
+"https://telegra.ph/file/2bf683bde0b567b04cd91.mp4",
+"https://telegra.ph/file/57a26cd4514bb619ffbd2.mp4"
+],
+"imagen": [
+"https://cdn.russellxz.click/86eb0211.jpg",
+"https://cdn.russellxz.click/86eb0211.jpg",
+"https://cdn.russellxz.click/86eb0211.jpg",
+"https://cdn.russellxz.click/86eb0211.jpg",
+"https://cdn.russellxz.click/86eb0211.jpg"
+]}}
