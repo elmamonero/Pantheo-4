@@ -4,7 +4,7 @@ const handler = async (m, {isPrems, conn}) => {
 return conn.reply(
 m.chat, `*[ 🎁 ] Ya Reclamastes Tu Cofre*\nRegresa en \`${msToTime(time - new Date())}\` para volver a reclamar`, m);
 }
-  const img = 'https://files.catbox.moe/qd5v12.jpg';
+  const img = 'https://cdn.russellxz.click/8cf6ecc8.jpg';
   const dia = Math.floor(Math.random() * 30);
   const tok = Math.floor(Math.random() * 10);
   const ai = Math.floor(Math.random() * 4000);
