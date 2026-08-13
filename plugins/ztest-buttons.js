@@ -2,7 +2,7 @@
 //Buttons - Message Im Interactive
 
 let handler = async (m, { conn }) => {
-    let imageUrl = 'https://files.catbox.moe/ilr818.jpg';
+    let imageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
 
     conn.sendMessage(m.chat, { 
         image: { url: imageUrl }, 
