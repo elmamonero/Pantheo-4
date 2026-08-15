@@ -66,18 +66,31 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
             // Envío del video
             await conn.sendFile(m.chat, videoURL, "tiktok.mp4", caption, m);
 
-            // Envío del audio solucionando el problema de reproducción
+            // Descargar el audio a Buffer antes de enviarlo
             if (audioURL) {
                 setTimeout(async () => {
-                     await conn.sendFile(
-                         m.chat, 
-                         audioURL, 
-                         "audio.mp3", 
-                         "", 
-                         m, 
-                         null, 
-                         { mimetype: 'audio/mp4' }
-                     );
+                    try {
+                        const audioReq = await fetch(audioURL, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                'Referer': 'https://www.tiktok.com/'
+                            }
+                        });
+                        
+                        const audioBuffer = await audioReq.buffer();
+
+                        await conn.sendFile(
+                            m.chat, 
+                            audioBuffer, 
+                            "audio.mp3", 
+                            "", 
+                            m, 
+                            false, 
+                            { mimetype: 'audio/mpeg' }
+                        );
+                    } catch (errAudio) {
+                        console.error("Error al descargar el audio:", errAudio);
+                    }
                 }, 1500);
             }
         } else {
