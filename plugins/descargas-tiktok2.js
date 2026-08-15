@@ -22,7 +22,6 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
         const sizeMb = data.size?.nowm ? (data.size.nowm / (1024 * 1024)).toFixed(2) : 'N/A';
         const sizeHdMb = data.size?.nowm_hd ? (data.size.nowm_hd / (1024 * 1024)).toFixed(2) : 'N/A';
 
-        // Diseño con emojis por secciones
         const caption = `╭─────────────
 │ 📱 *TIKTOK DOWNLOAD*
 ╰─────────────
@@ -63,33 +62,35 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
 └ 🛍️ *Comercial:* ${data.metadata?.commercial_video ? '✅ Sí' : '❌ No'}`;
 
         if (videoURL) {
-            // Envío del video
+            // 1. Envío del video
             await conn.sendFile(m.chat, videoURL, "tiktok.mp4", caption, m);
 
-            // Descargar el audio a Buffer antes de enviarlo
-            if (audioURL) {
+            // 2. Envío del audio seguro
+            if (audioURL && audioURL.startsWith('http')) {
                 setTimeout(async () => {
                     try {
-                        const audioReq = await fetch(audioURL, {
+                        const response = await fetch(audioURL, {
                             headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                'Referer': 'https://www.tiktok.com/'
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                             }
                         });
                         
-                        const audioBuffer = await audioReq.buffer();
-
-                        await conn.sendFile(
-                            m.chat, 
-                            audioBuffer, 
-                            "audio.mp3", 
-                            "", 
-                            m, 
-                            false, 
-                            { mimetype: 'audio/mpeg' }
-                        );
-                    } catch (errAudio) {
-                        console.error("Error al descargar el audio:", errAudio);
+                        if (response.ok) {
+                            const buffer = await response.buffer();
+                            
+                            // Verificar que el buffer no esté vacío (mayor a 10KB)
+                            if (buffer.length > 10000) {
+                                await conn.sendMessage(m.chat, { 
+                                    audio: buffer, 
+                                    mimetype: 'audio/mp4',
+                                    ptt: false
+                                }, { quoted: m });
+                            } else {
+                                console.log("El buffer del audio devolvió un archivo muy pequeño o corrupto.");
+                            }
+                        }
+                    } catch (audioErr) {
+                        console.error("Error procesando envío de audio:", audioErr);
                     }
                 }, 1500);
             }
