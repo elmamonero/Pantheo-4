@@ -8,33 +8,31 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
     try {
         await conn.reply(m.chat, "*[ ⏳ ] Aguarde un momento, estoy enviando su video...*", m);
 
-        // 1. Llamamos a la función
         const res = await tiktokdl(args[0]);
 
-        // 2. Debug: Si res está vacío o no tiene la estructura
-        if (!res || !res.resultado) {
-            console.log("Respuesta de la API:", res); // Esto saldrá en tu consola de Cafirexos
-            return m.reply("*[ ❌ ] La API no respondió correctamente. Revisa la consola.*");
+        // Validamos la estructura exacta que sale en tu consola
+        if (!res || !res.result) {
+            return m.reply("*[ ❌ ] Error: La API no devolvió el resultado esperado.*");
         }
 
-        const data = res.resultado;
-        const videoURL = data.datos || data.alternativas?.hd || data.alternativas?.sd;
+        const data = res.result;
+        const videoURL = data.data || data.alternativas?.hd; // URL del video
         const audioURL = data.music_info?.url;
 
         const infonya_gan = `*📖 Descrip꯭ción:*
-> ${data.título || 'Sin descripción'}*
+> ${data.title || 'Sin descripción'}*
 ╭── ︿︿︿︿︿ *⭒   ⭒   ⭒   ⭒   ⭒*
-┊ ✧ *Likes:* ${data.estadísticas?.['Me gusta'] || 0}
-┊ ✧ *Comentarios:* ${data.estadísticas?.comentario || 0}
-┊ ✧ *Compartidas:* ${data.estadísticas?.compartir || 0}
-┊ ✧ *Vistas:* ${data.estadísticas?.vistas || 0}
-┊ ✧ *Descargas:* ${data.estadísticas?.descargar || 0}
+┊ ✧ *Likes:* ${data.stats?.likes || 0}
+┊ ✧ *Comentarios:* ${data.stats?.comment || 0}
+┊ ✧ *Compartidas:* ${data.stats?.share || 0}
+┊ ✧ *Vistas:* ${data.stats?.views || 0}
+┊ ✧ *Descargas:* ${data.stats?.download || 0}
 ╰─── ︶︶︶︶ ✰⃕  ⌇ *⭒ ⭒ ⭒*   ˚̩̥̩̥*̩̩͙✩
 *👤 Usu꯭ario:*
-·˚₊· ͟͟͞͞꒰➳ ${data.autor?.apodo || "No info"}
-(https://www.tiktok.com/@${data.autor?.['nombre de usuario'] || ''})
+·˚₊· ͟͟͞͞꒰➳ ${data.author?.nickname || "No info"}
+(@${data.author?.username || ''})
 *🎧 Son꯭ido:*
-${data.music_info?.título || 'Desconocido'}`;
+${data.music_info?.title || 'Original'}`;
 
         if (videoURL) {
             await conn.sendFile(m.chat, videoURL, "tiktok.mp4", "*\`DESCARGAS - TIKTOK V2\`*" + `\n\n${infonya_gan}`, m);
@@ -45,7 +43,7 @@ ${data.music_info?.título || 'Desconocido'}`;
                 }, 1500);
             }
         } else {
-            return m.reply("*[ ❌ ] No se pudo obtener el video de la API.*");
+            return m.reply("*[ ❌ ] No se pudo obtener el video.*");
         }
     } catch (e) {
         console.error(e);
@@ -61,12 +59,10 @@ export default handler
 
 async function tiktokdl(url) {
     try {
-        // Encodeamos la URL para evitar errores con caracteres especiales
         let api = `https://api-faa.my.id/faa/tiktok?url=${encodeURIComponent(url)}`
         let response = await fetch(api)
         return await response.json()
     } catch (e) {
-        console.error("Fallo en fetch:", e);
         return null;
     }
 }
