@@ -2,79 +2,66 @@ import fetch from 'node-fetch'
 
 var handler = async (m, { conn, args, usedPrefix, command }) => {
     if (!args[0]) {
-        throw m.reply(`*[ 🔗 ] Ingrese un enlace de TikTok*\n\n*Ejemplo:* ${usedPrefix + command} https://vm.tiktok.com/ZMkcuXwJv/`);
+        throw m.reply(`*[ 🔗 ] Ingrese un enlace de TikTok*\n\n*Ejemplo:* ${usedPrefix + command} https://vt.tiktok.com/ZSVNmoTLc/`);
     }
 
     try {
-        await conn.reply(m.chat, "*[ ⏳ ] Procesando contenido...*", m);
+        await conn.reply(m.chat, "*[ ⏳ ] Conectando con la API y descargando...*", m);
 
         const res = await tiktokdl(args[0]);
 
-        if (!res || !res.estado || !res.resultado) {
-            throw "*[ ❌ ] No se pudo obtener la información desde la API.*";
+        // Verificación robusta basada en tu JSON
+        if (!res || res.estado !== true || !res.resultado) {
+            throw "*[ ❌ ] La API no respondió correctamente. Intenta con otro link o verifica el estado de la API.*";
         }
 
         const data = res.resultado;
         const videoURL = data.alternativas?.hd || data.datos || data.alternativas?.sd;
         const audioURL = data.music_info?.url;
 
-        // Conversión de bytes a Megabytes (MB)
-        const sizeMb = data.tamaño?.nowm ? (data.tamaño.nowm / (1024 * 1024)).toFixed(2) : 'N/A';
-        const sizeHdMb = data.tamaño?.nowm_hd ? (data.tamaño.nowm_hd / (1024 * 1024)).toFixed(2) : 'N/A';
+        // Construcción del mensaje estético
+        const caption = `✨ *TIKTOK DOWNLOADER* ✨
 
-        // Plantilla con diseño propio usando emojis
-        const caption = `✦─────「 *TIKTOK INFO* 」─────✦
-
-📝 *Descripción:*
+📝 *Descripción:* 
 > ${data.título || 'Sin descripción'}
 
-👤 *Creador*
-┆ 🌟 *Nombre:* ${data.autor?.apodo || 'Desconocido'}
-┆ 🏷️ *Usuario:* @${data.autor?.['nombre de usuario'] || 'usuario'}
-┆ 🔑 *ID:* \`${data.autor?.id || 'N/A'}\`
+👤 *Creador:* 
+• *Nombre:* ${data.autor?.apodo || 'Desconocido'}
+• *Usuario:* @${data.autor?.['nombre de usuario'] || 'N/A'}
 
-🎥 *Archivo de Video*
-┆ ⏳ *Duración:* ${data.duración || 'N/A'}
-┆ 🌐 *Región:* ${data.región || 'Global'}
-┆ ⚡ *Calidad:* ${data.metadatos?.calidad_de_video || 'Normal'}
-┆ 📦 *Peso (SD):* ${sizeMb} MB
-┆ 💎 *Peso (HD):* ${sizeHdMb} MB
+🎬 *Video:*
+• *Duración:* ${data.duración || 'N/A'}
+• *Región:* ${data.región || 'Global'}
+• *Calidad:* ${data.metadatos?.calidad_de_video || 'Estándar'}
 
-📈 *Rendimiento & Métricas*
-┆ 👀 *Vistas:* ${data.estadísticas?.vistas || 0}
-┆ ❤️ *Me gusta:* ${data.estadísticas?.['Me gusta'] || 0}
-┆ 💬 *Comentarios:* ${data.estadísticas?.comentario || 0}
-┆ 🔄 *Compartidos:* ${data.estadísticas?.compartir || 0}
-┆ 📥 *Descargas:* ${data.estadísticas?.descargar || 0}
-┆ 🔖 *Guardados:* ${data.estadísticas?.guardar || 0}
+📊 *Estadísticas:*
+• *Vistas:* ${data.estadísticas?.vistas || '0'}
+• *Likes:* ${data.estadísticas?.['Me gusta'] || '0'}
+• *Comentarios:* ${data.estadísticas?.comentario || '0'}
+• *Compartidos:* ${data.estadísticas?.compartir || '0'}
 
-🎧 *Pista de Audio*
-┆ 🎶 *Nombre:* ${data.music_info?.título || 'Original'}
-┆ 🎤 *Artista:* ${data.music_info?.autor || 'Desconocido'}
-┆ ⏱️ *Duración:* ${data.music_info?.duración || 'N/A'}
+🎵 *Audio:*
+• *Pista:* ${data.music_info?.título || 'Original'}
+• *Artista:* ${data.music_info?.autor || 'Desconocido'}
 
-🏷️ *Clasificación*
-┆ 📢 *Es Anuncio:* ${data.metadatos?.is_ad ? 'Sí' : 'No'}
-┆ 🛍️ *Es Comercial:* ${data.metadatos?.commercial_video ? 'Sí' : 'No'}
-
-✦──────────────────────────✦`;
+🛡️ *Comercial:* ${data.metadatos?.commercial_video ? 'Sí' : 'No'}`;
 
         if (videoURL) {
-            // Envía el video con la descripción formateada
+            // Envío del video
             await conn.sendFile(m.chat, videoURL, "tiktok.mp4", caption, m);
 
-            // Envía el audio por separado con retardo de 1.5s
+            // Envío del audio con retardo
             if (audioURL) {
                 setTimeout(async () => {
                     await conn.sendFile(m.chat, audioURL, "audio.mp3", "", m, null, { mimetype: 'audio/mp4' });
                 }, 1500);
             }
         } else {
-            throw "*No se encontró un enlace de descarga válido.*";
+            throw "*[ ❌ ] No se pudo obtener el archivo de video.*";
         }
 
     } catch (error) {
-        conn.reply(m.chat, `Error: ${error.message || error}`, m);
+        conn.reply(m.chat, `*[ ⚠️ ] Error:* ${error.message || error}`, m);
     }
 };
 
@@ -84,8 +71,19 @@ handler.command = /^(tiktok2|tt2|tt2dl)$/i;
 
 export default handler
 
+// Función mejorada con User-Agent para evitar bloqueos
 async function tiktokdl(url) {
-    const apiUrl = `https://api-faa.my.id/faa/tiktok?url=${encodeURIComponent(url)}`;
-    const response = await fetch(apiUrl);
-    return await response.json();
+    try {
+        const apiUrl = `https://api-faa.my.id/faa/tiktok?url=${encodeURIComponent(url)}`;
+        const response = await fetch(apiUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            }
+        });
+        
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (e) {
+        return null;
+    }
 }
