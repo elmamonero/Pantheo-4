@@ -63,11 +63,21 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
 └ 🛍️ *Comercial:* ${data.metadata?.commercial_video ? '✅ Sí' : '❌ No'}`;
 
         if (videoURL) {
+            // Envío del video
             await conn.sendFile(m.chat, videoURL, "tiktok.mp4", caption, m);
 
+            // Envío del audio solucionando el problema de reproducción
             if (audioURL) {
                 setTimeout(async () => {
-                     await conn.sendFile(m.chat, audioURL, "audio.mp3", "", m);
+                     await conn.sendFile(
+                         m.chat, 
+                         audioURL, 
+                         "audio.mp3", 
+                         "", 
+                         m, 
+                         null, 
+                         { mimetype: 'audio/mp4' }
+                     );
                 }, 1500);
             }
         } else {
