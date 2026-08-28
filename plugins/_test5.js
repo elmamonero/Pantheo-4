@@ -3,7 +3,7 @@ global.scrims = global.scrims || {};
 
 const handler = async (m, { conn, args }) => {
     if (args.length < 3) {
-        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM, y el país (MX, CO, CL, AR, PE, EC).\nEjemplo: *.scrimprueba 08:00 PM MX*', m);
+        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM, país (MX, CO, CL, AR, PE, EC) y opcionalmente la casilla.\nEjemplo: *.scrimprueba 08:00 PM MX C4*', m);
         return;
     }
 
@@ -16,6 +16,7 @@ const handler = async (m, { conn, args }) => {
     const horaUsuario = args[0];
     const ampm = args[1].toUpperCase();
     const pais = args[2].toUpperCase();
+    const casilla = args[3] ? args[3].toUpperCase() : 'Por asignar';
 
     if (!['AM', 'PM'].includes(ampm)) {
         conn.reply(m.chat, 'Formato AM/PM incorrecto. Debe ser AM o PM.', m);
@@ -43,21 +44,23 @@ const handler = async (m, { conn, args }) => {
         horasEnPais[key] = formatTime(horaEnPais);
     }
 
-    const textoBase = generarTexto(horasEnPais, [], [], m.sender);
+    const textoBase = generarTexto(horasEnPais, casilla, [], [], m.sender);
 
     const sentMsg = await conn.sendMessage(m.chat, { text: textoBase, mentions: [m.sender] }, { quoted: m });
 
-    // Guardar el estado del scrim asociado al ID del mensaje enviado
+    // Guardar estado del scrim
     global.scrims[sentMsg.key.id] = {
         chat: m.chat,
         horasEnPais,
+        casilla,
         organizador: m.sender,
         titulares: [],
-        suplentes: []
+        suplentes: [],
+        timestamp: Date.now()
     };
 };
 
-// Listener para capturar reacciones en el mensaje del scrim
+// Listener para reacciones
 handler.before = async function (m, { conn }) {
     if (!m.message?.reactionMessage) return;
 
@@ -66,16 +69,14 @@ handler.before = async function (m, { conn }) {
     const emoji = reaction.text;
     const sender = m.sender;
 
-    // Verificar si la reacción pertenece a un scrim activo
     if (!global.scrims || !global.scrims[msgId]) return;
 
     const scrim = global.scrims[msgId];
 
-    // Quitar al usuario de ambas listas antes de volver a anotarlo
+    // Quitar al usuario de ambas listas antes de reasignarlo
     scrim.titulares = scrim.titulares.filter(user => user !== sender);
     scrim.suplentes = scrim.suplentes.filter(user => user !== sender);
 
-    // Asignar posición según el emoji
     if (emoji === '❤️') {
         if (scrim.titulares.length < 4) {
             scrim.titulares.push(sender);
@@ -87,21 +88,29 @@ handler.before = async function (m, { conn }) {
             scrim.suplentes.push(sender);
         }
     }
-    // Si el emoji es ❌ simplemente queda fuera (ya se filtró arriba)
 
-    const nuevoTexto = generarTexto(scrim.horasEnPais, scrim.titulares, scrim.suplentes, scrim.organizador);
+    const nuevoTexto = generarTexto(scrim.horasEnPais, scrim.casilla, scrim.titulares, scrim.suplentes, scrim.organizador);
     const todasLasMenciones = [...new Set([scrim.organizador, ...scrim.titulares, ...scrim.suplentes])];
 
-    // Editar el mensaje original con los participantes actualizados
-    await conn.sendMessage(scrim.chat, {
-        text: nuevoTexto,
-        edit: reaction.key,
-        mentions: todasLasMenciones
-    });
+    // Intentar editar el mensaje (si pasaron menos de 15 min), sino enviar un nuevo mensaje
+    const quinceMinutos = 15 * 60 * 1000;
+    const tiempoTranscurrido = Date.now() - scrim.timestamp;
+
+    if (tiempoTranscurrido < quinceMinutos) {
+        await conn.sendMessage(scrim.chat, {
+            text: nuevoTexto,
+            edit: reaction.key,
+            mentions: todasLasMenciones
+        });
+    } else {
+        await conn.sendMessage(scrim.chat, {
+            text: `⚠️ *(Tiempo de edición excedido - Lista Actualizada)*\n\n${nuevoTexto}`,
+            mentions: todasLasMenciones
+        });
+    }
 };
 
-// Función para armar el diseño visual de la lista
-function generarTexto(horasEnPais, titulares, suplentes, organizador) {
+function generarTexto(horasEnPais, casilla, titulares, suplentes, organizador) {
     const slotT = (idx) => titulares[idx] ? `@${titulares[idx].split('@')[0]}` : '';
     const slotS = (idx) => suplentes[idx] ? `@${suplentes[idx].split('@')[0]}` : '';
 
@@ -120,6 +129,7 @@ function generarTexto(horasEnPais, titulares, suplentes, organizador) {
 │🇨🇱 𝐂𝐇𝐈🇱𝐄 : ${horasEnPais.CL}
 │🇦🇷 𝐀𝐑𝐆𝐄𝐍𝐓𝐈𝐍𝐀 : ${horasEnPais.AR}
 │
+│➥ 𝐂𝐀𝐒𝐈𝐋𝐋𝐀: ${casilla}
 │➥ 𝐉𝐔𝐆𝐀𝐃𝐎𝐑𝐄𝐒: (${titulares.length}/4)
 │
 │     𝗘𝗦𝗖𝗨𝗔𝗗𝗥𝗔 
@@ -135,7 +145,7 @@ function generarTexto(horasEnPais, titulares, suplentes, organizador) {
 │ 📌 Reacciona para anotarte:
 │ ❤️ = Titular | 💛 = Suplente | ❌ = Salir
 │
-│ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜𝗭𝗔𝗗𝗢𝗥:
+│ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜Z𝐀𝐃𝐎𝐑:
 │@${organizador.split('@')[0]}
 ╰─────────────╯`.trim();
 }
