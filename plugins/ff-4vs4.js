@@ -29,12 +29,12 @@ const handler = async (m, { conn, args }) => {
         CO: 'America/Bogota',
         PE: 'America/Lima',
         EC: 'America/Guayaquil',
-        CL: 'America/Santiago', // Se ajusta automáticamente si es Invierno o Verano
+        CL: 'America/Santiago',
         AR: 'America/Argentina/Buenos_Aires'
     };
 
     if (!(pais in timezones)) {
-        conn.reply(m.chat, 'País no válido. Usa MX para México, CO para Colombia, CL para Chile, AR para Argentina, PE para Perú o EC para Ecuador.', m);
+        conn.reply(m.chat, 'País no válido. Usa MX, CO, CL, AR, PE o EC.', m);
         return;
     }
 
@@ -42,11 +42,9 @@ const handler = async (m, { conn, args }) => {
     if (ampm === 'PM' && hora !== 12) hora += 12;
     if (ampm === 'AM' && hora === 12) hora = 0;
 
-    // Obtener la fecha actual en la zona horaria del país de origen
     const now = new Date();
     const tzOrigen = timezones[pais];
     
-    // Construir una fecha con la hora elegida por el usuario en su huso horario local
     const formatterOrigen = new Intl.DateTimeFormat('en-US', {
         timeZone: tzOrigen,
         year: 'numeric', month: '2-digit', day: '2-digit'
@@ -54,10 +52,8 @@ const handler = async (m, { conn, args }) => {
     const parts = formatterOrigen.formatToParts(now);
     const dateMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
 
-    // Generar objeto Date en milisegundos reales
     const fechaRef = new Date(`${dateMap.year}-${dateMap.month}-${dateMap.day}T${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`);
 
-    // Calcular la hora correspondiente en cada país
     const horasEnPais = {};
     for (const key in timezones) {
         const fmt = new Intl.DateTimeFormat('es-ES', {
@@ -128,7 +124,7 @@ handler.before = async function (m, { conn }) {
             mentions: todasLasMenciones
         });
     } catch (e) {
-        // Ignorar si la API de WhatsApp rechaza la edición
+        // Ignorar errores de edición por tiempo
     }
 };
 
@@ -136,38 +132,38 @@ function generarTexto(horasEnPais, casilla, titulares, suplentes, organizador) {
     const slotT = (idx) => titulares[idx] ? `@${titulares[idx].split('@')[0]}` : '';
     const slotS = (idx) => suplentes[idx] ? `@${suplentes[idx].split('@')[0]}` : '';
 
-    return `╭──────>⋆☽⋆ 🆚 ⋆☾⋆<──────╮
-ㅤ           •𝟰  𝗩 𝗘 𝗥 𝗦 𝗨 𝗦  𝟰•
-╰──────>⋆☽⋆ 🆚 ⋆☾⋆<──────╯
+    return `╭─────── 🆚 ───────╮
+    • 𝟰  𝗩 𝗘 𝗥 𝗦 𝗨 𝗦  𝟰 •
+╰─────── 🆚 ───────╯
 
-╭──────>⋆☽⋆ 🔥 ⋆☾⋆<──────╮
-│⏱ 𝐇𝐎𝐑𝐀𝐑𝐈𝐎:
-│🇲🇽 𝐌𝐄𝐗𝐈𝐂𝐎 : ${horasEnPais.MX}
-│🇨🇴 𝐂𝐎𝗟𝐎𝗠𝗕𝗜𝐀 : ${horasEnPais.CO}
-│🇵🇪 𝐏𝐄𝐑𝐔 : ${horasEnPais.PE}
-│🇪🇨 𝐄𝐂𝗨𝐀𝐃𝗢𝗥 : ${horasEnPais.EC}
-│🇨🇱 𝐂𝐇𝐈🇱𝐄 : ${horasEnPais.CL}
-│🇦🇷 𝐀𝐑𝐆𝗘𝗡𝐓𝗜𝐍𝐀 : ${horasEnPais.AR}
+╭───────────────╮
+│ ⏱️ *HORARIO:*
+│ 🇲🇽 México : ${horasEnPais.MX}
+│ 🇨🇴 Colombia : ${horasEnPais.CO}
+│ 🇵🇪 Perú : ${horasEnPais.PE}
+│ 🇪🇨 Ecuador : ${horasEnPais.EC}
+│ 🇨🇱 Chile : ${horasEnPais.CL}
+│ 🇦🇷 Argentina : ${horasEnPais.AR}
 │
-│➥ 𝐂𝐀𝐒𝐈𝐋𝐋𝐀: ${casilla}
-│➥ 𝗝𝗨𝗚𝗔𝗗𝗢𝗥𝗘𝗦: (${titulares.length}/4)
+│ 📌 *CASILLA:* ${casilla}
+│ 👥 *JUGADORES:* (${titulares.length}/4)
 │
-│     𝗘𝗦𝗖𝗨𝗔𝐃𝗥𝗔 1
-│👑 ➤ ${slotT(0)}
-│⚜️ ➤ ${slotT(1)}
-│⚜️ ➤ ${slotT(2)}
-│⚜️ ➤ ${slotT(3)}
+│   *ESCUADRA 1*
+│ 👑 ➤ ${slotT(0)}
+│ ⚜️ ➤ ${slotT(1)}
+│ ⚜️ ➤ ${slotT(2)}
+│ ⚜️ ➤ ${slotT(3)}
 │
-│ㅤʚ 𝗦𝗨𝗣𝗟𝗘𝗡𝗧𝗘𝗦: (${suplentes.length}/2)
-│⚜️ ➤ ${slotS(0)}
-│⚜️ ➤ ${slotS(1)}
+│ 🎗️ *SUPLENTES:* (${suplentes.length}/2)
+│ ⚜️ ➤ ${slotS(0)}
+│ ⚜️ ➤ ${slotS(1)}
 │
-│ 📌 Reacciona para anotarte:
+│ 📌 *Reacciona para anotarte:*
 │ ❤️ = Titular | 💛 = Suplente | ❌ = Salir
 │
-│ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜𝗭𝗔𝐃𝗢𝗥:
-│@${organizador.split('@')[0]}
-╰──────>⋆☽⋆ 🔥 ⋆☾⋆<──────╯`.trim();
+│ 👑 *ORGANIZADOR:*
+│ @${organizador.split('@')[0]}
+╰───────────────╯`.trim();
 }
 
 handler.help = ['4vs4'];
