@@ -45,28 +45,7 @@ const handler = async (m, { conn, args }) => {
 
     const textoBase = generarTexto(horasEnPais, [], [], m.sender);
 
-    // Configuración del menú interactivo de opciones
-    const sections = [
-        {
-            title: "Selecciona tu posición",
-            rows: [
-                { title: "⚔️ Anotarme como Titular", id: `.scrim_titular` },
-                { title: "🎒 Anotarme como Suplente", id: `.scrim_suplente` },
-                { title: "❌ Salirme de la Lista", id: `.scrim_salir` }
-            ]
-        }
-    ];
-
-    const listMessage = {
-        text: textoBase,
-        footer: "Selecciona una opción en el botón para anotarte o salir",
-        title: "📋 REGISTRO DE SCRIM",
-        buttonText: "⚡ UNIRSE / SALIR",
-        sections,
-        mentions: [m.sender]
-    };
-
-    const sentMsg = await conn.sendMessage(m.chat, listMessage, { quoted: m });
+    const sentMsg = await conn.sendMessage(m.chat, { text: textoBase, mentions: [m.sender] }, { quoted: m });
 
     // Guardar el estado del scrim asociado al ID del mensaje enviado
     global.scrims[sentMsg.key.id] = {
@@ -78,52 +57,50 @@ const handler = async (m, { conn, args }) => {
     };
 };
 
-// Listener para procesar la interacción de los usuarios en la lista
+// Listener para capturar reacciones en el mensaje del scrim
 handler.before = async function (m, { conn }) {
-    const selectedId = m.message?.listResponseMessage?.singleSelectReply?.selectedRowId || m.text;
-    const quotedId = m.quoted?.id;
+    if (!m.message?.reactionMessage) return;
 
-    if (!selectedId || !quotedId) return;
-    if (!global.scrims || !global.scrims[quotedId]) return;
-
-    // Verificar si la acción corresponde a las opciones del scrim
-    if (!['.scrim_titular', '.scrim_suplente', '.scrim_salir'].includes(selectedId)) return;
-
-    const scrim = global.scrims[quotedId];
+    const reaction = m.message.reactionMessage;
+    const msgId = reaction.key.id;
+    const emoji = reaction.text;
     const sender = m.sender;
 
-    // Remover al usuario de ambas listas antes de volver a asignarlo
+    // Verificar si la reacción pertenece a un scrim activo
+    if (!global.scrims || !global.scrims[msgId]) return;
+
+    const scrim = global.scrims[msgId];
+
+    // Quitar al usuario de ambas listas antes de volver a anotarlo
     scrim.titulares = scrim.titulares.filter(user => user !== sender);
     scrim.suplentes = scrim.suplentes.filter(user => user !== sender);
 
-    if (selectedId === '.scrim_titular') {
+    // Asignar posición según el emoji
+    if (emoji === '❤️') {
         if (scrim.titulares.length < 4) {
             scrim.titulares.push(sender);
         } else if (scrim.suplentes.length < 2) {
             scrim.suplentes.push(sender);
-        } else {
-            return conn.reply(m.chat, '⚠️ La lista de titulares y suplentes ya está llena.', m);
         }
-    } else if (selectedId === '.scrim_suplente') {
+    } else if (emoji === '💛') {
         if (scrim.suplentes.length < 2) {
             scrim.suplentes.push(sender);
-        } else {
-            return conn.reply(m.chat, '⚠️ La lista de suplentes ya está llena.', m);
         }
     }
+    // Si el emoji es ❌ simplemente queda fuera (ya se filtró arriba)
 
     const nuevoTexto = generarTexto(scrim.horasEnPais, scrim.titulares, scrim.suplentes, scrim.organizador);
     const todasLasMenciones = [...new Set([scrim.organizador, ...scrim.titulares, ...scrim.suplentes])];
 
-    // Actualiza el mensaje original editando su contenido
+    // Editar el mensaje original con los participantes actualizados
     await conn.sendMessage(scrim.chat, {
         text: nuevoTexto,
-        edit: { remoteJid: scrim.chat, id: quotedId },
+        edit: reaction.key,
         mentions: todasLasMenciones
     });
 };
 
-// Función interna para generar el diseño de la plantilla
+// Función para armar el diseño visual de la lista
 function generarTexto(horasEnPais, titulares, suplentes, organizador) {
     const slotT = (idx) => titulares[idx] ? `@${titulares[idx].split('@')[0]}` : '';
     const slotS = (idx) => suplentes[idx] ? `@${suplentes[idx].split('@')[0]}` : '';
@@ -155,6 +132,9 @@ function generarTexto(horasEnPais, titulares, suplentes, organizador) {
 │🥷🏻 ➤ ${slotS(0)}
 │🥷🏻 ➤ ${slotS(1)}
 │
+│ 📌 Reacciona para anotarte:
+│ ❤️ = Titular | 💛 = Suplente | ❌ = Salir
+│
 │ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜𝗭𝗔𝗗𝗢𝗥:
 │@${organizador.split('@')[0]}
 ╰─────────────╯`.trim();
@@ -165,3 +145,4 @@ handler.tags = ['freefire'];
 handler.command = /^scrimprueba$/i;
 
 export default handler;
+
