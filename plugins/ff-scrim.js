@@ -23,32 +23,56 @@ const handler = async (m, { conn, args }) => {
         return;
     }
 
-    let [hora, minutos] = horaUsuario.split(':').map(Number);
-    if (ampm === 'PM' && hora !== 12) hora += 12;
-    if (ampm === 'AM' && hora === 12) hora = 0;
+    // Mapa de zonas horarias oficiales de IANA
+    const timezones = {
+        MX: 'America/Mexico_City',
+        CO: 'America/Bogota',
+        PE: 'America/Lima',
+        EC: 'America/Guayaquil',
+        CL: 'America/Santiago', // Se ajusta automáticamente si es Invierno (UTC-4) o Verano (UTC-3)
+        AR: 'America/Argentina/Buenos_Aires'
+    };
 
-    const diferenciasHorarias = { MX: -1, CO: 0, CL: 2, AR: 2, PE: 0, EC: 0 };
-    if (!(pais in diferenciasHorarias)) {
+    if (!(pais in timezones)) {
         conn.reply(m.chat, 'País no válido. Usa MX, CO, CL, AR, PE o EC.', m);
         return;
     }
 
-    const diferenciaHoraria = diferenciasHorarias[pais];
-    const formatTime = (date) => date.toLocaleTimeString('es', { hour12: true, hour: '2-digit', minute: '2-digit' });
-    const horasEnPais = {};
+    let [hora, minutos] = horaUsuario.split(':').map(Number);
+    if (ampm === 'PM' && hora !== 12) hora += 12;
+    if (ampm === 'AM' && hora === 12) hora = 0;
 
-    for (const key in diferenciasHorarias) {
-        const horaActual = new Date();
-        horaActual.setHours(hora, minutos, 0, 0);
-        const horaEnPais = new Date(horaActual.getTime() + (3600000 * (diferenciasHorarias[key] - diferenciaHoraria)));
-        horasEnPais[key] = formatTime(horaEnPais);
+    // Obtener la fecha actual en la zona horaria del país de origen
+    const now = new Date();
+    const tzOrigen = timezones[pais];
+    
+    // Construir una fecha con la hora elegida por el usuario en su huso horario local
+    const formatterOrigen = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzOrigen,
+        year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    const parts = formatterOrigen.formatToParts(now);
+    const dateMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+    // Generar objeto Date en milisegundos reales
+    const fechaRef = new Date(`${dateMap.year}-${dateMap.month}-${dateMap.day}T${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`);
+
+    // Calcular la hora correspondiente en cada país
+    const horasEnPais = {};
+    for (const key in timezones) {
+        const fmt = new Intl.DateTimeFormat('es-ES', {
+            timeZone: timezones[key],
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        horasEnPais[key] = fmt.format(fechaRef).toUpperCase();
     }
 
     const textoBase = generarTexto(horasEnPais, casilla, [], [], m.sender);
 
     const sentMsg = await conn.sendMessage(m.chat, { text: textoBase, mentions: [m.sender] }, { quoted: m });
 
-    // Guardar el estado del scrim con la marca de tiempo exacta de creación
     global.scrims[sentMsg.key.id] = {
         chat: m.chat,
         horasEnPais,
@@ -60,7 +84,6 @@ const handler = async (m, { conn, args }) => {
     };
 };
 
-// Listener para reacciones
 handler.before = async function (m, { conn }) {
     if (!m.message?.reactionMessage) return;
 
@@ -72,18 +95,14 @@ handler.before = async function (m, { conn }) {
     if (!global.scrims || !global.scrims[msgId]) return;
 
     const scrim = global.scrims[msgId];
-
-    // Límite fijado en 17 minutos (17 min * 60 seg * 1000 ms)
     const diecisieteMinutos = 17 * 60 * 1000;
     const tiempoTranscurrido = Date.now() - scrim.timestamp;
 
     if (tiempoTranscurrido > diecisieteMinutos) {
-        // Elimina el scrim de la memoria global y finaliza sin realizar ninguna acción
         delete global.scrims[msgId];
         return;
     }
 
-    // Quitar al usuario de ambas listas antes de anotarlo nuevamente
     scrim.titulares = scrim.titulares.filter(user => user !== sender);
     scrim.suplentes = scrim.suplentes.filter(user => user !== sender);
 
@@ -102,7 +121,6 @@ handler.before = async function (m, { conn }) {
     const nuevoTexto = generarTexto(scrim.horasEnPais, scrim.casilla, scrim.titulares, scrim.suplentes, scrim.organizador);
     const todasLasMenciones = [...new Set([scrim.organizador, ...scrim.titulares, ...scrim.suplentes])];
 
-    // Intenta editar el mensaje si está dentro del tiempo límite
     try {
         await conn.sendMessage(scrim.chat, {
             text: nuevoTexto,
@@ -110,7 +128,7 @@ handler.before = async function (m, { conn }) {
             mentions: todasLasMenciones
         });
     } catch (e) {
-        // En caso de que la API rechace la edición por tiempo, se ignora de forma silenciosa
+        // Ignorar si la API de WhatsApp no permite editar por tiempo
     }
 };
 
@@ -149,7 +167,7 @@ function generarTexto(horasEnPais, casilla, titulares, suplentes, organizador) {
 │ 📌 Reacciona para anotarte:
 │ ❤️ = Titular | 💛 = Suplente | ❌ = Salir
 │
-│ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜𝗭𝐀𝐃𝐎𝗥:
+│ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜𝗭𝗔𝐃𝗢𝗥:
 │@${organizador.split('@')[0]}
 ╰─────────────╯`.trim();
 }
@@ -159,3 +177,4 @@ handler.tags = ['freefire'];
 handler.command = /^(scrim|scrim1)$/i;
 
 export default handler;
+
