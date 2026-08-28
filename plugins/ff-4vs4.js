@@ -29,7 +29,7 @@ const handler = async (m, { conn, args }) => {
         CO: 'America/Bogota',
         PE: 'America/Lima',
         EC: 'America/Guayaquil',
-        CL: 'America/Santiago', // Se ajusta automáticamente si es Invierno (UTC-4) o Verano (UTC-3)
+        CL: 'America/Santiago', // Se ajusta automáticamente si es Invierno o Verano
         AR: 'America/Argentina/Buenos_Aires'
     };
 
@@ -143,7 +143,7 @@ function generarTexto(horasEnPais, casilla, titulares, suplentes, organizador) {
 ╭──────>⋆☽⋆ 🔥 ⋆☾⋆<──────╮
 │⏱ 𝐇𝐎𝐑𝐀𝐑𝐈𝐎:
 │🇲🇽 𝐌𝐄𝐗𝐈𝐂𝐎 : ${horasEnPais.MX}
-│🇨🇴 𝐂𝐎𝗟𝐎𝗠𝗕𝗜𝗔 : ${horasEnPais.CO}
+│🇨🇴 𝐂𝐎𝗟𝐎𝗠𝗕𝗜𝐀 : ${horasEnPais.CO}
 │🇵🇪 𝐏𝐄𝐑𝐔 : ${horasEnPais.PE}
 │🇪🇨 𝐄𝐂𝗨𝐀𝐃𝗢𝗥 : ${horasEnPais.EC}
 │🇨🇱 𝐂𝐇𝐈🇱𝐄 : ${horasEnPais.CL}
@@ -162,9 +162,6 @@ function generarTexto(horasEnPais, casilla, titulares, suplentes, organizador) {
 │⚜️ ➤ ${slotS(0)}
 │⚜️ ➤ ${slotS(1)}
 │
-│ㅤʚ 𝗗𝗢𝗡𝗔𝗗𝗢𝗥 𝗗𝗘 𝗦𝗔𝗟𝗔:
-│🫂 ➤
-│
 │ 📌 Reacciona para anotarte:
 │ ❤️ = Titular | 💛 = Suplente | ❌ = Salir
 │
@@ -178,3 +175,4 @@ handler.tags = ['freefire'];
 handler.command = /^(4vs4|4x4|4v4|v4|vs4)$/i;
 
 export default handler;
+
