@@ -33,12 +33,12 @@ for (const archivo of archivos) {
   } catch (error) {
     errores++
 
-    console.log('
-❌ ERROR EN ESTE ARCHIVO:')
+    console.log('')
+    console.log('❌ ERROR EN ESTE ARCHIVO:')
     console.log(archivo)
     console.log(error.stderr.toString())
   }
 }
 
-console.log(`
-Revisión terminada. Errores encontrados: ${errores}`)
+console.log('')
+console.log(`Revisión terminada. Errores encontrados: ${errores}`)
