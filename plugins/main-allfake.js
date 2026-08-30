@@ -103,10 +103,10 @@ global.canalNombreM = ["Pantheon Bot", "Pantheon Bot", "Pantheon Bot"]
 global.channelRD = await getRandomChannel()
   
 global.icono = [ 
-'https://ibb.co/PzVGP68K',
-'https://ibb.co/PzVGP68K',
-'https://ibb.co/PzVGP68K',
-'https://ibb.co/PzVGP68K',
+'https://files.evogb.win/ES9dd5.jpg',
+'https://files.evogb.win/ES9dd5.jpg',
+'https://files.evogb.win/ES9dd5.jpg',
+'https://files.evogb.win/ES9dd5.jpg',
 ].getRandom()
 
 global.urls = [
