@@ -289,8 +289,8 @@ ${readMore}
 ⠞👑੭ ${usedPrefix}chetar
 ⠞👑੭ ${usedPrefix}unbanuser`.trim();
 
-    conn.sendMessage(m.chat, {
-      image: { url: img },
+    await conn.sendMessage(m.chat, {
+      image: fs.readFileSync(imagen),
       caption: text,
       contextInfo: {
         mentionedJid: [m.sender],
@@ -300,6 +300,7 @@ ${readMore}
     }, { quoted: fkontak });
 
   } catch (e) {
+    console.error(e);
     conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
   }
 };
@@ -309,8 +310,6 @@ handler.fail = null;
 
 export default handler;
 
-const more = String.fromCharCode(8206)
-const readMore = more.repeat(4001)
 function clockString(ms) {
   const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000);
   const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
