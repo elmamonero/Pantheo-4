@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import axios from 'axios';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 
 // ==== CONFIGURACIÓN DE TU API ====
@@ -14,13 +14,10 @@ const handler = async (msg, { conn, args, usedPrefix, command }) => {
   
   try { await conn.sendMessage(chatId, { react: { text: "⏳", key: msg.key } }); } catch {}
 
-  // 1. Detectar mensaje citado o actual
   const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
   const targetMessage = quoted || msg.message;
 
   const { typeDetected, mediaMessage } = detectMedia(targetMessage);
-
-  // 2. Si no hay archivo pero hay una URL en los argumentos
   const maybeUrl = args && args[0] ? String(args[0]).trim() : null;
 
   if (!mediaMessage && maybeUrl && /^https?:\/\//i.test(maybeUrl)) {
@@ -40,16 +37,14 @@ const handler = async (msg, { conn, args, usedPrefix, command }) => {
     }
   }
 
-  // 3. Si no hay media ni URL, enviar mensaje de ayuda
   if (!mediaMessage) {
     await conn.sendMessage(chatId, {
-      text: `✳️ *Usa:*\n${pref}${command}\n\n📌 Responde a una imagen, video, audio, sticker o documento, o pasa una URL directa.\n\n*Ejemplos:*\n- Responde a un archivo con: *${pref}${command}*\n- O escribe: *${pref}${command} https://ejemplo.com/archivo.mp4*`,
+      text: `✳️ *Usa:*\n${pref}${command}\n\n📌 Responde a una imagen, video, audio, sticker o documento, o pasa una URL directa.`,
     }, { quoted: msg });
     try { await conn.sendMessage(chatId, { react: { text: "❌", key: msg.key } }); } catch {}
     return;
   }
 
-  // 4. Descargar el archivo multimedia
   try {
     let mime = mediaMessage.mimetype || "application/octet-stream";
     let rawExt = typeDetected === 'sticker' ? 'webp' : (mime.split('/')[1]?.split(';')[0] || 'bin');
@@ -64,15 +59,9 @@ const handler = async (msg, { conn, args, usedPrefix, command }) => {
       buffer = Buffer.concat([buffer, chunk]);
     }
 
-    if (!buffer || buffer.length === 0) {
-      throw new Error("El archivo descargado está vacío.");
-    }
+    if (!buffer || buffer.length === 0) throw new Error("El archivo está vacío.");
+    if (buffer.length > 200 * 1024 * 1024) throw new Error("El archivo supera los 200MB.");
 
-    if (buffer.length > 200 * 1024 * 1024) {
-      throw new Error("El archivo supera el límite de 200MB.");
-    }
-
-    // 5. Subir binario a tu API
     const apiRes = await apiUploadRaw({ buffer, filename, mime });
     const url = pickUrlFromApi(apiRes);
 
@@ -82,7 +71,8 @@ const handler = async (msg, { conn, args, usedPrefix, command }) => {
     try { await conn.sendMessage(chatId, { react: { text: "✅", key: msg.key } }); } catch {}
 
   } catch (e) {
-    await conn.sendMessage(chatId, { text: `❌ *Error al subir:* ${e.message}` }, { quoted: msg });
+    const errorMsg = e.response?.data?.message || e.message;
+    await conn.sendMessage(chatId, { text: `❌ *Error al subir:* ${errorMsg}` }, { quoted: msg });
     try { await conn.sendMessage(chatId, { react: { text: "❌", key: msg.key } }); } catch {}
   }
 };
@@ -93,8 +83,6 @@ handler.tags = ["herramientas"];
 handler.register = true;
 
 export default handler;
-
-// ————— FUNCIONES AUXILIARES —————
 
 function detectMedia(message) {
   if (!message || typeof message !== 'object') return { typeDetected: null, mediaMessage: null };
@@ -127,46 +115,29 @@ async function apiUploadRaw({ buffer, filename, mime }) {
   const safe = safeFilename(filename || `upload_${Date.now()}`);
   const url = `${base}${ENDPOINT_RAW}?filename=${encodeURIComponent(safe)}`;
 
-  const r = await fetch(url, {
-    method: "POST",
+  const res = await axios.post(url, buffer, {
     headers: {
       apikey: API_KEY,
       "Content-Type": mime || "application/octet-stream",
     },
-    body: buffer,
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity,
   });
 
-  const text = await r.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = { status: false, message: "Respuesta no JSON", raw: text }; }
-
-  if (!r.ok || json?.status === false) {
-    throw new Error(json?.message || json?.raw || `HTTP ${r.status}`);
-  }
-
-  return json;
+  return res.data;
 }
 
 async function apiUploadFromUrl(remoteUrl) {
   const base = API_BASE.replace(/\/+$/, "");
   const url = `${base}${ENDPOINT_JSON}`;
 
-  const r = await fetch(url, {
-    method: "POST",
+  const res = await axios.post(url, { url: remoteUrl }, {
     headers: {
       apikey: API_KEY,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ url: remoteUrl }),
   });
 
-  const text = await r.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = { status: false, message: "Respuesta no JSON", raw: text }; }
-
-  if (!r.ok || json?.status === false) {
-    throw new Error(json?.message || json?.raw || `HTTP ${r.status}`);
-  }
-
-  return json;
+  return res.data;
 }
+
