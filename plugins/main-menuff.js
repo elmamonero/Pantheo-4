@@ -49,7 +49,7 @@ let handler = async (m, { conn, usedPrefix }) => {
     ├❧ 🎮 ${usedPrefix}reglaslideres2  
     ╰───── • 🌟 • ─────╯`;  
 
-    let img = 'https://qu.ax/qN1X7';  
+    let img = 'https://ibb.co/PzVGP68K';  
 
     conn.sendMessage(m.chat, {  
         text: ff,  

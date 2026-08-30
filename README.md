@@ -2,7 +2,7 @@
  <p align="center">Pantheon Shop</p>
 </p>
 
-![img](https://qu.ax/qN1X7)
+![img](https://ibb.co/PzVGP68K)
 
 [![GROUP OFFICIAL](https://img.shields.io/badge/WhatsApp%20grupo-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://chat.whatsapp.com/GqKwwoV2JJaJDP2SL7SddX) [![GROUP OFFICIAL](https://img.shields.io/badge/WhatsApp%20channel-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VaJxgcB0bIdvuOwKTM2Y)
 
@@ -37,5 +37,5 @@
 
 ## Creador
 <a href="https://github.com/CrxstianEscobar">
-  <img src="https://qu.ax/qN1X7" width="100px"/>
+  <img src="https://ibb.co/PzVGP68K" width="100px"/>
 </a>

@@ -45,8 +45,8 @@ let handler = async (m, { conn, text }) => {
   ]
 
   const imagenes = [
-    'https://qu.ax/qN1X7',
-    'https://qu.ax/qN1X7',
+    'https://ibb.co/PzVGP68K',
+    'https://ibb.co/PzVGP68K',
   ]
 
   const respuesta = respuestas[Math.floor(Math.random() * respuestas.length)]
