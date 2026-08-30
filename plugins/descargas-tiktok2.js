@@ -3,9 +3,7 @@ import fetch from 'node-fetch'
 var handler = async (m, { conn, args, usedPrefix, command }) => {
   if (!args[0]) {
     return m.reply(
-      `*[ 🔗 ] Ingrese el enlace de TikTok*
-
-` +
+      `*[ 🔗 ] Ingrese el enlace de TikTok*\n\n` +
       `*Ejemplo:* ${usedPrefix + command} https://vt.tiktok.com/ZSVNmoTLc/`
     )
   }
@@ -92,8 +90,8 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
       m
     )
 
-    // Esta es la línea corregida.
-    if (!audioURL || !/^https?:///i.test(audioURL)) {
+    // Regex escapada correctamente:
+    if (!audioURL || !/^https?:\/\//i.test(audioURL)) {
       return
     }
 
