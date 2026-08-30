@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'; // O usa 'axios' si es lo que usa tu proyecto
 
-const BACKUP_IMAGE = "https://cdn.russellxz.click/86eb0211.jpg";
+const BACKUP_IMAGE = "https://qu.ax/qN1X7";
 
 /**
  * Intenta obtener una URL de medios. Si falla (por timeout o caída), devuelve el respaldo.
