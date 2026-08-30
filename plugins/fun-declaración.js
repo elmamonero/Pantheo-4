@@ -4,13 +4,13 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
     if (command === 'declaracion') {
         if (!text) return m.reply(`🌸 Ingresa el nombre de la persona a la que te le vas a declarar`);
 
-        const imageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
+        const imageUrl = 'https://qu.ax/qN1X7';
 
         const messageText = `Hola ${text} \nVengo a decirte que desde hace mucho me gustas, pero no fui capaz de demostrar amor y cariño. Te quiero pedir disculpas por mi comportamiento en dejarte hablar. \nPero con el tiempo me di cuenta que el error fue mío y quiero pedirte disculpas. \nExtraño los abrazos que nos dábamos, realmente quiero que me perdones y empezar otra vez. \n\n¿Me Perdonas?\n\n\n*Responde*: .si para aceptar y .no para rechazar`;
 
         await conn.sendMessage(m.chat, { image: { url: imageUrl }, caption: messageText });
     } else if (command === 'si') {
-        const yesImageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
+        const yesImageUrl = 'https://qu.ax/qN1X7';
         const yesMessageText = `¡Qué alegría que hayas aceptado! Me siento increíblemente feliz y emocionado por lo que está por venir. Desde que te conocí, he soñado con este momento, y ahora que es real, no puedo esperar para vivir momentos inolvidables contigo.\n\nGracias por darme esta oportunidad. 💖`;
 
         await conn.sendMessage(m.chat, { 
@@ -18,7 +18,7 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             caption: yesMessageText
         }, { quoted: m });
     } else if (command === 'no') {
-        const noImageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
+        const noImageUrl = 'https://qu.ax/qN1X7';
         const noMessageText = `Entiendo y agradezco tu sinceridad. Aunque no haya sido el resultado que esperaba, valoro mucho nuestra amistad y quiero que sepas que seguiré aquí para ti. 😊`;
 
         await conn.sendMessage(m.chat, { 
@@ -49,19 +49,19 @@ let handler = async (m, { conn, text, usedPrefix, command }) => {
             return await conn.sendMessage(m.chat, { text: "[ 🌸 ] Ingresa el nombre de la persona a la que te le vas a declarar" }, { quoted: m });
         }
 
-        const imageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
+        const imageUrl = 'https://qu.ax/qN1X7';
         const messageText = `Hola ${text} \nVengo a decirte que desde hace mucho me gustas, pero no fui capaz de demostrar amor y cariño. Te quiero pedir disculpas por mi comportamiento al dejarte de hablar. \nPero con el tiempo me di cuenta de que el error fue mío y quiero pedirte disculpas. \nExtraño los abrazos que nos dábamos, realmente quiero que me perdones y empezar otra vez. \n\n¿Me perdonas?\n\n*Responde*: .si para aceptar y .no para rechazar`;
 
         await sendImageMessage(imageUrl, messageText);
     } 
     else if (command === 'si') {
-        const yesImageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
+        const yesImageUrl = 'https://qu.ax/qN1X7';
         const yesMessageText = `¡Qué alegría que hayas aceptado! Me siento increíblemente feliz y emocionado por lo que está por venir. Desde que te conocí, he soñado con este momento, y ahora que es real, no puedo esperar para vivir momentos inolvidables contigo.\n\nGracias por darme esta oportunidad. 💖`;
 
         await sendImageMessage(yesImageUrl, yesMessageText);
     } 
     else if (command === 'no') {
-        const noImageUrl = 'https://cdn.russellxz.click/86eb0211.jpg';
+        const noImageUrl = 'https://qu.ax/qN1X7';
         const noMessageText = `Entiendo y agradezco tu sinceridad. Aunque no haya sido el resultado que esperaba, valoro mucho nuestra amistad y quiero que sepas que seguiré aquí para ti. 😊`;
 
         await sendImageMessage(noImageUrl, noMessageText);

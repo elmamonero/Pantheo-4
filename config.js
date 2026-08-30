@@ -65,8 +65,8 @@ global.etiqueta = 'Pantheon Bot'
 global.moneda = 'Diamantes'
 global.welcom1 = '❍ Edita Con El Comando setwelcome'
 global.welcom2 = '❍ Edita Con El Comando setbye'
-global.banner = 'https://cdn.russellxz.click/86eb0211.jpg'
-global.avatar = 'https://cdn.russellxz.click/86eb0211.jpg'
+global.banner = 'https://qu.ax/qN1X7'
+global.avatar = 'https://qu.ax/qN1X7'
 
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 
