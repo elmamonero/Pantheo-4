@@ -1,19 +1,35 @@
 const handler = async (m, { conn, command, text }) => {
-    // Obtener la persona mencionada, citada o el texto ingresado
-    let target = m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : null;
-    
-    let targetName = "";
-    let mentionsArray = [m.sender];
+    // Detectar si hay dos usuarios mencionados (ej. .love @user1 @user2)
+    let mentioned = m.mentionedJid || [];
+    let user1, user2, targetName1, targetName2;
+    let mentionsArray = [];
 
-    if (target) {
-        targetName = `@${target.split('@')[0]}`;
-        mentionsArray.push(target);
-    } else if (text) {
-        targetName = text.trim();
+    if (mentioned.length >= 2) {
+        user1 = mentioned[0];
+        user2 = mentioned[1];
+        targetName1 = `@${user1.split('@')[0]}`;
+        targetName2 = `@${user2.split('@')[0]}`;
+        mentionsArray = [user1, user2];
     } else {
-        return conn.sendMessage(m.chat, { 
-            text: '*[ ℹ️ ] Por favor, menciona a una persona o escribe un nombre para calcular el porcentaje de amor.*' 
-        }, { quoted: m });
+        // Comportamiento anterior: Si hay una mención, respuesta o texto
+        let target = mentioned[0] ? mentioned[0] : m.quoted ? m.quoted.sender : null;
+        
+        user1 = m.sender;
+        targetName1 = `@${user1.split('@')[0]}`;
+        mentionsArray.push(user1);
+
+        if (target) {
+            user2 = target;
+            targetName2 = `@${target.split('@')[0]}`;
+            mentionsArray.push(target);
+        } else if (text) {
+            // Si escribieron un nombre plano (ej: .love Juan)
+            targetName2 = text.trim();
+        } else {
+            return conn.sendMessage(m.chat, { 
+                text: '*[ ℹ️ ] Por favor, menciona a una persona, responde a su mensaje o menciona a dos usuarios (ej: .love @user1 @user2).*' 
+            }, { quoted: m });
+        }
     }
 
     // Generación del porcentaje aleatorio
@@ -54,15 +70,18 @@ const handler = async (m, { conn, command, text }) => {
     const getRandomMessage = (messages) => messages[Math.floor(Math.random() * messages.length)];
     const loveMessage = getRandomMessage(isHighLove ? loveMessages : notSoHighLoveMessages);
 
-    const userTag = `@${m.sender.split('@')[0]}`;
     const response = 
         `━━━━⬣ *💖 LOVE 💖* ⬣━━━━\n` +
-        `*❥ En el universo del amor, ${targetName} y ${userTag} ${loveDescription} del ${lovePercentage}% de un 100%.*\n\n` +
+        `*❥ En el universo del amor, ${targetName1} y ${targetName2} ${loveDescription} del ${lovePercentage}% de un 100%.*\n\n` +
         `*💌 ${loveMessage}*\n` +
         `━━━━⬣ *💖 LOVE 💖* ⬣━━━━`;
 
     // Animación de carga
     async function loading() {
+        let { key } = await conn.sendMessage(m.chat, { 
+            text: "*💞 ¡Calculando Porcentaje! 💞*" 
+        }, { quoted: m });
+
         const hawemod = [
             "《 █▒▒▒▒▒▒▒▒▒▒▒》10%",
             "《 ████▒▒▒▒▒▒▒▒》30%",
@@ -70,22 +89,16 @@ const handler = async (m, { conn, command, text }) => {
             "《 ██████████▒▒》80%",
             "《 ████████████》100%"
         ];
-        
-        // Enviar mensaje inicial
-        let { key } = await conn.sendMessage(m.chat, { 
-            text: "*💞 ¡Calculando Porcentaje! 💞*" 
-        }, { quoted: m });
 
-        // Editar el mensaje en cada paso de la carga
         for (const progress of hawemod) {
-            await new Promise(resolve => setTimeout(resolve, 800)); 
+            await new Promise(resolve => setTimeout(resolve, 600)); 
             await conn.sendMessage(m.chat, { 
                 text: progress, 
                 edit: key 
             });
         }
 
-        // Mensaje final con el resultado y las menciones aseguradas
+        // Mensaje final con el resultado y las menciones aseguradas para ambos (si aplican)
         await conn.sendMessage(m.chat, { 
             text: response, 
             edit: key, 
@@ -96,7 +109,7 @@ const handler = async (m, { conn, command, text }) => {
     loading();    
 };
 
-handler.help = ['love <nombre>'];
+handler.help = ['love <nombre/@user1 @user2>'];
 handler.tags = ['fun'];
 handler.command = /^(love|amor)$/i;
 export default handler;
