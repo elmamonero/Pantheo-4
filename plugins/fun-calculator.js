@@ -1,8 +1,31 @@
 const handler = async (m, { conn, command, text }) => {
-  // Obtener el JID del usuario mencionado o del mensaje citado
-  let who = m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text ? text.replace(/[^0-9]/g, '') + '@s.whatsapp.net' : '';
+  // Obtener el JID del usuario mencionado, citado o usar el emisor si no hay nadie
+  let who = m.mentionedJid && m.mentionedJid[0] 
+    ? m.mentionedJid[0] 
+    : m.quoted 
+    ? m.quoted.sender 
+    : text 
+    ? text.replace(/[^0-9]/g, '') + '@s.whatsapp.net' 
+    : m.sender;
 
-  if (!who) return conn.reply(m.chat, `*[ ℹ️ ] Menciona a algún usuario o responde a su mensaje.*`, m);
+  // Si no se proporcionó texto, ni se mencionó a nadie, ni se respondió a un mensaje, se evalúa a sí mismo o se pide mención.
+  // Pero para que sea funcional como los bots clásicos, si no hay 'who' válido por texto numérico, usa el emisor o exige mención.
+  if (!text && !m.mentionedJid && !m.quoted) {
+    who = m.sender;
+  } else if (text && !text.includes('@') && isNaN(text.replace(/[^0-9]/g, ''))) {
+    // Si escribieron un nombre plano (ej: .gay Juan), puedes manejarlo o usar al usuario. 
+    // Aquí aseguramos que si es un número válido lo tome, de lo contrario si es texto plano agarre el emisor o el texto.
+    who = m.sender;
+  }
+
+  // Mejor alternativa para capturar JID exacto:
+  if (m.mentionedJid && m.mentionedJid[0]) {
+    who = m.mentionedJid[0];
+  } else if (m.quoted && m.quoted.sender) {
+    who = m.quoted.sender;
+  } else {
+    who = m.sender; // Si no menciona a nadie, se calcula a sí mismo (comportamiento habitual en Baileys/WPP bots)
+  }
 
   const percentages = Math.floor(Math.random() * 501);
   const emojis = {
@@ -121,7 +144,7 @@ const handler = async (m, { conn, command, text }) => {
       await conn.sendMessage(m.chat, { text: hawemod[i], edit: key });
     }
 
-    // Aquí enviamos el array `mentions: [who]` para que WhatsApp lo etiquete de verdad
+    // Se envía correctamente el array de menciones para que pinte azul al usuario
     await conn.sendMessage(m.chat, { 
       text: cal, 
       edit: key, 
