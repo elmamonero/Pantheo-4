@@ -1,47 +1,47 @@
 import fetch from 'node-fetch'
 
 var handler = async (m, { conn, args, usedPrefix, command }) => {
-    if (!args[0]) {
-        return m.reply(
-            `*[ 🔗 ] Ingrese el enlace de TikTok*
+  if (!args[0]) {
+    return m.reply(
+      `*[ 🔗 ] Ingrese el enlace de TikTok*
 
 ` +
-            `*Ejemplo:* ${usedPrefix + command} https://vt.tiktok.com/ZSVNmoTLc/`
-        )
+      `*Ejemplo:* ${usedPrefix + command} https://vt.tiktok.com/ZSVNmoTLc/`
+    )
+  }
+
+  try {
+    await conn.reply(
+      m.chat,
+      '*[ ⏳ ] Procesando información del video...*',
+      m
+    )
+
+    const res = await tiktokdl(args[0])
+
+    if (!res || !res.result) {
+      return m.reply('*[ ❌ ] La API no respondió correctamente.*')
     }
 
-    try {
-        await conn.reply(
-            m.chat,
-            '*[ ⏳ ] Procesando información del video...*',
-            m
-        )
+    const data = res.result
 
-        const res = await tiktokdl(args[0])
+    const videoURL =
+      data.data ||
+      data.alternativas?.hd ||
+      data.alternativas?.selected ||
+      data.alternativas?.seleccionado
 
-        if (!res || !res.result) {
-            return m.reply('*[ ❌ ] La API no respondió correctamente.*')
-        }
+    const audioURL = data.music_info?.url
 
-        const data = res.result
+    const sizeMb = data.size?.nowm
+      ? (data.size.nowm / (1024 * 1024)).toFixed(2)
+      : 'N/A'
 
-        const videoURL =
-            data.data ||
-            data.alternativas?.hd ||
-            data.alternativas?.selected ||
-            data.alternativas?.seleccionado
+    const sizeHdMb = data.size?.nowm_hd
+      ? (data.size.nowm_hd / (1024 * 1024)).toFixed(2)
+      : 'N/A'
 
-        const audioURL = data.music_info?.url
-
-        const sizeMb = data.size?.nowm
-            ? (data.size.nowm / (1024 * 1024)).toFixed(2)
-            : 'N/A'
-
-        const sizeHdMb = data.size?.nowm_hd
-            ? (data.size.nowm_hd / (1024 * 1024)).toFixed(2)
-            : 'N/A'
-
-        const caption = `╭─────────────
+    const caption = `╭─────────────
 │ 📱 *TIKTOK DOWNLOAD*
 ╰─────────────
 
@@ -80,64 +80,71 @@ var handler = async (m, { conn, args, usedPrefix, command }) => {
 │ 📢 *Anuncio:* ${data.metadata?.is_ad ? '✅ Sí' : '❌ No'}
 └ 🛍️ *Comercial:* ${data.metadata?.commercial_video ? '✅ Sí' : '❌ No'}`
 
-        if (!videoURL) {
-            return m.reply('*[ ❌ ] No se pudo obtener el archivo de video.*')
-        }
-
-        await conn.sendFile(
-            m.chat,
-            videoURL,
-            'tiktok.mp4',
-            caption,
-            m
-        )
-
-        if (!audioURL || !/^https?:///i.test(audioURL)) {
-            return
-        }
-
-        try {
-            const audioResponse = await fetch(audioURL, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-                    'Referer': 'https://www.tiktok.com/'
-                }
-            })
-
-            if (!audioResponse.ok) {
-                throw new Error(`Error descargando audio: HTTP ${audioResponse.status}`)
-            }
-
-            const audioBuffer = Buffer.from(
-                await audioResponse.arrayBuffer()
-            )
-
-            if (audioBuffer.length < 10000) {
-                throw new Error('El archivo de audio está vacío, incompleto o bloqueado.')
-            }
-
-            await conn.sendMessage(
-                m.chat,
-                {
-                    audio: audioBuffer,
-                    mimetype: 'audio/mpeg',
-                    fileName: 'tiktok.mp3',
-                    ptt: false
-                },
-                {
-                    quoted: m
-                }
-            )
-        } catch (audioErr) {
-            console.error('Error enviando audio de TikTok:', audioErr)
-            await m.reply(
-                '*[ ⚠️ ] El video se envió correctamente, pero no se pudo enviar el audio.*'
-            )
-        }
-    } catch (e) {
-        console.error('Error en comando TikTok:', e)
-        await m.reply(`*[ ❌ ] Error:* ${e.message}`)
+    if (!videoURL) {
+      return m.reply('*[ ❌ ] No se pudo obtener el archivo de video.*')
     }
+
+    await conn.sendFile(
+      m.chat,
+      videoURL,
+      'tiktok.mp4',
+      caption,
+      m
+    )
+
+    // Esta es la línea corregida.
+    if (!audioURL || !/^https?:///i.test(audioURL)) {
+      return
+    }
+
+    try {
+      const audioResponse = await fetch(audioURL, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+          Referer: 'https://www.tiktok.com/'
+        }
+      })
+
+      if (!audioResponse.ok) {
+        throw new Error(
+          `Error descargando audio: HTTP ${audioResponse.status}`
+        )
+      }
+
+      const audioBuffer = Buffer.from(
+        await audioResponse.arrayBuffer()
+      )
+
+      if (audioBuffer.length < 10000) {
+        throw new Error(
+          'El archivo de audio está vacío, incompleto o bloqueado.'
+        )
+      }
+
+      await conn.sendMessage(
+        m.chat,
+        {
+          audio: audioBuffer,
+          mimetype: 'audio/mpeg',
+          fileName: 'tiktok.mp3',
+          ptt: false
+        },
+        {
+          quoted: m
+        }
+      )
+    } catch (audioErr) {
+      console.error('Error enviando audio de TikTok:', audioErr)
+
+      await m.reply(
+        '*[ ⚠️ ] El video se envió correctamente, pero no se pudo enviar el audio.*'
+      )
+    }
+  } catch (e) {
+    console.error('Error en comando TikTok:', e)
+
+    await m.reply(`*[ ❌ ] Error:* ${e.message}`)
+  }
 }
 
 handler.help = ['tiktok2 <url>']
@@ -147,22 +154,22 @@ handler.command = /^(tiktok2|tt2|tt2dl)$/i
 export default handler
 
 async function tiktokdl(url) {
-    try {
-        const api = `https://api-faa.my.id/faa/tiktok?url=${encodeURIComponent(url)}`
+  try {
+    const api = `https://api-faa.my.id/faa/tiktok?url=${encodeURIComponent(url)}`
 
-        const response = await fetch(api, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0'
-            }
-        })
+    const response = await fetch(api, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
+    })
 
-        if (!response.ok) {
-            throw new Error(`La API respondió HTTP ${response.status}`)
-        }
-
-        return await response.json()
-    } catch (e) {
-        console.error('Error consultando API TikTok:', e)
-        return null
+    if (!response.ok) {
+      throw new Error(`La API respondió HTTP ${response.status}`)
     }
+
+    return await response.json()
+  } catch (e) {
+    console.error('Error consultando API TikTok:', e)
+    return null
+  }
 }
