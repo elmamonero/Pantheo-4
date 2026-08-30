@@ -1,158 +1,133 @@
-// Memoria global para almacenar los scrims activos
-global.scrims = global.scrims || {};
+import fs from 'fs';
+import path from 'path';
+import FormData from 'form-data';
+import axios from 'axios';
+import ffmpeg from 'fluent-ffmpeg';
+import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { fileURLToPath } from 'url';
 
-const handler = async (m, { conn, args }) => {
-    if (args.length < 3) {
-        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM, país (MX, CO, CL, AR, PE, EC) y opcionalmente la casilla.\nEjemplo: *.scrimprueba 08:00 PM MX C4*', m);
-        return;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const handler = async (msg, { conn, command }) => {
+  const chatId = msg.key.remoteJid;
+  const pref = global.prefixes?.[0] || ".";
+
+  const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+  function detectMedia(message) {
+    if (!message || typeof message !== 'object') return { type: null, media: null };
+
+    const mediaTypes = ['imageMessage', 'videoMessage', 'stickerMessage', 'audioMessage'];
+
+    for (const type of mediaTypes) {
+      if (message[type]) return { type: type.replace('Message', '').toLowerCase(), media: message[type] };
     }
 
-    const horaRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9]$/;
-    if (!horaRegex.test(args[0])) {
-        conn.reply(m.chat, 'Formato de hora incorrecto. Debe ser HH:MM en formato de 12 horas.', m);
-        return;
+    for (const key in message) {
+      if (typeof message[key] === 'object') {
+        const result = detectMedia(message[key]);
+        if (result.type) return result;
+      }
+    }
+    return { type: null, media: null };
+  }
+
+  let typeDetected, mediaMessage;
+
+  if (quoted) {
+    ({ type: typeDetected, media: mediaMessage } = detectMedia(quoted));
+  } else {
+    ({ type: typeDetected, media: mediaMessage } = detectMedia(msg.message));
+  }
+
+  if (!mediaMessage || !typeDetected) {
+    return await conn.sendMessage(chatId, {
+      text: `✳️ *Usa:*\n${pref}${command}\n📌 Responde o envía una imagen, video, sticker o audio para subirlo.`
+    }, { quoted: msg });
+  }
+
+  await conn.sendMessage(chatId, { react: { text: '☁️', key: msg.key } });
+
+  try {
+    const tmpDir = path.join(__dirname, 'tmp');
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+
+    let rawExt = typeDetected === 'sticker' ? 'webp' :
+      mediaMessage.mimetype ? mediaMessage.mimetype.split('/')[1].split(';')[0] : 'bin';
+    if (rawExt === 'jpeg') rawExt = 'jpg';
+
+    const rawPath = path.join(tmpDir, `${Date.now()}_input.${rawExt}`);
+
+    const stream = await downloadContentFromMessage(mediaMessage, typeDetected === 'sticker' ? 'sticker' : typeDetected);
+    const writeStream = fs.createWriteStream(rawPath);
+    for await (const chunk of stream) writeStream.write(chunk);
+    writeStream.end();
+    await new Promise(resolve => writeStream.on('finish', resolve));
+
+    const stats = fs.statSync(rawPath);
+    if (stats.size > 200 * 1024 * 1024) {
+      fs.unlinkSync(rawPath);
+      throw new Error('⚠️ El archivo excede el límite de 200MB.');
     }
 
-    const horaUsuario = args[0];
-    const ampm = args[1].toUpperCase();
-    const pais = args[2].toUpperCase();
-    const casilla = args[3] ? args[3].toUpperCase() : 'Por asignar';
+    let finalPath = rawPath;
 
-    if (!['AM', 'PM'].includes(ampm)) {
-        conn.reply(m.chat, 'Formato AM/PM incorrecto. Debe ser AM o PM.', m);
-        return;
+    if (typeDetected === 'audio' && ['ogg', 'm4a', 'mpeg'].includes(rawExt)) {
+      finalPath = path.join(tmpDir, `${Date.now()}_converted.mp3`);
+      await new Promise((resolve, reject) => {
+        ffmpeg(rawPath)
+          .audioCodec('libmp3lame')
+          .toFormat('mp3')
+          .on('end', resolve)
+          .on('error', reject)
+          .save(finalPath);
+      });
+      fs.unlinkSync(rawPath);
     }
 
-    let [hora, minutos] = horaUsuario.split(':').map(Number);
-    if (ampm === 'PM' && hora !== 12) hora += 12;
-    if (ampm === 'AM' && hora === 12) hora = 0;
+    // Subida a SkyUltraPlus CDN
+    const form = new FormData();
+    form.append('name', 'archivo_bot');
+    form.append('file', fs.createReadStream(finalPath));
 
-    const diferenciasHorarias = { MX: -1, CO: 0, CL: 2, AR: 2, PE: 0, EC: 0 };
-    if (!(pais in diferenciasHorarias)) {
-        conn.reply(m.chat, 'País no válido. Usa MX, CO, CL, AR, PE o EC.', m);
-        return;
-    }
+    const res = await axios.post('https://cdn.skyultraplus.com/upload.php', form, {
+      headers: {
+        ...form.getHeaders(),
+        'X-API-KEY': '3ade1171a99a228e',
+      }
+    });
 
-    const diferenciaHoraria = diferenciasHorarias[pais];
-    const formatTime = (date) => date.toLocaleTimeString('es', { hour12: true, hour: '2-digit', minute: '2-digit' });
-    const horasEnPais = {};
+    fs.unlinkSync(finalPath);
 
-    for (const key in diferenciasHorarias) {
-        const horaActual = new Date();
-        horaActual.setHours(hora, minutos, 0, 0);
-        const horaEnPais = new Date(horaActual.getTime() + (3600000 * (diferenciasHorarias[key] - diferenciaHoraria)));
-        horasEnPais[key] = formatTime(horaEnPais);
-    }
+    const json = res.data || {};
+    const url = json.file?.url || json.url;
 
-    const textoBase = generarTexto(horasEnPais, casilla, [], [], m.sender);
+    if (!url) throw new Error('❌ No se pudo obtener el link de SkyUltraPlus.');
 
-    const sentMsg = await conn.sendMessage(m.chat, { text: textoBase, mentions: [m.sender] }, { quoted: m });
+    await conn.sendMessage(chatId, {
+      text: `✅ *Archivo subido exitosamente a SkyUltraPlus:*\n${url}`
+    }, { quoted: msg });
 
-    // Guardar estado del scrim
-    global.scrims[sentMsg.key.id] = {
-        chat: m.chat,
-        horasEnPais,
-        casilla,
-        organizador: m.sender,
-        titulares: [],
-        suplentes: [],
-        timestamp: Date.now()
-    };
+    await conn.sendMessage(chatId, {
+      react: { text: '✅', key: msg.key }
+    });
+
+  } catch (err) {
+    await conn.sendMessage(chatId, {
+      text: `❌ *Error:* ${err.message}`
+    }, { quoted: msg });
+
+    await conn.sendMessage(chatId, {
+      react: { text: '❌', key: msg.key }
+    });
+  }
 };
 
-// Listener para reacciones
-handler.before = async function (m, { conn }) {
-    if (!m.message?.reactionMessage) return;
-
-    const reaction = m.message.reactionMessage;
-    const msgId = reaction.key.id;
-    const emoji = reaction.text;
-    const sender = m.sender;
-
-    if (!global.scrims || !global.scrims[msgId]) return;
-
-    const scrim = global.scrims[msgId];
-
-    // Quitar al usuario de ambas listas antes de reasignarlo
-    scrim.titulares = scrim.titulares.filter(user => user !== sender);
-    scrim.suplentes = scrim.suplentes.filter(user => user !== sender);
-
-    if (emoji === '❤️') {
-        if (scrim.titulares.length < 4) {
-            scrim.titulares.push(sender);
-        } else if (scrim.suplentes.length < 2) {
-            scrim.suplentes.push(sender);
-        }
-    } else if (emoji === '💛') {
-        if (scrim.suplentes.length < 2) {
-            scrim.suplentes.push(sender);
-        }
-    }
-
-    const nuevoTexto = generarTexto(scrim.horasEnPais, scrim.casilla, scrim.titulares, scrim.suplentes, scrim.organizador);
-    const todasLasMenciones = [...new Set([scrim.organizador, ...scrim.titulares, ...scrim.suplentes])];
-
-    // Intentar editar el mensaje (si pasaron menos de 15 min), sino enviar un nuevo mensaje
-    const quinceMinutos = 15 * 60 * 1000;
-    const tiempoTranscurrido = Date.now() - scrim.timestamp;
-
-    if (tiempoTranscurrido < quinceMinutos) {
-        await conn.sendMessage(scrim.chat, {
-            text: nuevoTexto,
-            edit: reaction.key,
-            mentions: todasLasMenciones
-        });
-    } else {
-        await conn.sendMessage(scrim.chat, {
-            text: `⚠️ *(Tiempo de edición excedido - Lista Actualizada)*\n\n${nuevoTexto}`,
-            mentions: todasLasMenciones
-        });
-    }
-};
-
-function generarTexto(horasEnPais, casilla, titulares, suplentes, organizador) {
-    const slotT = (idx) => titulares[idx] ? `@${titulares[idx].split('@')[0]}` : '';
-    const slotS = (idx) => suplentes[idx] ? `@${suplentes[idx].split('@')[0]}` : '';
-
-    return `╭──────⚔──────╮
-
-ㅤ𝐒𝐂𝐑𝐈𝐌𝐒 𝐂𝐎𝐌𝐏𝐄𝐓𝐈𝐓𝐈𝐕𝐎
-
-╰──────⚔──────╯
-
-╭──────────────╮
-│⏱ 𝐇𝐎𝐑𝐀𝐑𝐈𝐎: 
-│🇲🇽 𝐌𝐄𝐗𝐈𝐂𝐎 : ${horasEnPais.MX}
-│🇨🇴 𝐂𝐎𝐋𝐎𝐌𝐁𝐈𝐀 : ${horasEnPais.CO}
-│🇵🇪 𝐏𝐄𝐑𝐔 : ${horasEnPais.PE}
-│🇪🇨 𝐄𝐂𝐔𝐀𝐃𝐎𝐑 : ${horasEnPais.EC}
-│🇨🇱 𝐂𝐇𝐈🇱𝐄 : ${horasEnPais.CL}
-│🇦🇷 𝐀𝐑𝐆𝐄𝐍𝐓𝐈𝐍𝐀 : ${horasEnPais.AR}
-│
-│➥ 𝐂𝐀𝐒𝐈𝐋𝐋𝐀: ${casilla}
-│➥ 𝐉𝐔𝐆𝐀𝐃𝐎𝐑𝐄𝐒: (${titulares.length}/4)
-│
-│     𝗘𝗦𝗖𝗨𝗔𝗗𝗥𝗔 
-│👑 ➤ ${slotT(0)}
-│🥷🏻 ➤ ${slotT(1)}
-│🥷🏻 ➤ ${slotT(2)}
-│🥷🏻 ➤ ${slotT(3)}
-│
-│ㅤʚ 𝐒𝐔𝐏𝐋𝐄𝐍𝐓𝐄: (${suplentes.length}/2)
-│🥷🏻 ➤ ${slotS(0)}
-│🥷🏻 ➤ ${slotS(1)}
-│
-│ 📌 Reacciona para anotarte:
-│ ❤️ = Titular | 💛 = Suplente | ❌ = Salir
-│
-│ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜Z𝐀𝐃𝐎𝐑:
-│@${organizador.split('@')[0]}
-╰─────────────╯`.trim();
-}
-
-handler.help = ['scrimprueba'];
-handler.tags = ['freefire'];
-handler.command = /^scrimprueba$/i;
+handler.command = ['tourl3'];
+handler.help = ['tourl'];
+handler.tags = ['herramientas'];
+handler.register = true;
 
 export default handler;
 
