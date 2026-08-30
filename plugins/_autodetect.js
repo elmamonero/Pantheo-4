@@ -11,7 +11,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
   
   let chat = global.db.data.chats[m.chat]
   let usuario = `@${m.sender.split`@`[0]}`
-  let pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null) || 'https://ibb.co/PzVGP68K'  
+  let pp = await conn.profilePictureUrl(m.chat, 'image').catch(_ => null) || 'https://files.evogb.win/ES9dd5.jpg'  
 
   // --- EXTRACCIÓN ULTRA SEGURA PARA NUEVAS VERSIONES DE BAILEYS ---
   let afectadoJid = ''

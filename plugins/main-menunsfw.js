@@ -1,6 +1,6 @@
 let handler = async (m, { isPrems, conn }) => {
 
-let img = 'https://ibb.co/PzVGP68K' 
+let img = 'https://files.evogb.win/ES9dd5.jpg' 
 let texto = `• 𝐌𝐄𝐍𝐔 +18 •
 「 🔞 *COMANDOS NOPOR* 🔞 」
 

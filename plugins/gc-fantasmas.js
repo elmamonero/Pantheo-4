@@ -23,7 +23,7 @@ total++
 sider.push(member[i])}}}
 if(total == 0) return conn.reply(m.chat, `*[⚔️] En Este Grupo No Hay Fantasmas✨🍷*`, m, rcanal)
 
- const stickerUrl = 'https://ibb.co/PzVGP68K'; 
+ const stickerUrl = 'https://files.evogb.win/ES9dd5.jpg'; 
 m.react('💫')
     await conn.sendFile(m.chat, stickerUrl, 'sticker.webp', '', m, null);
 
