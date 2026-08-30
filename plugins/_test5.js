@@ -1,133 +1,80 @@
-import fs from 'fs';
-import path from 'path';
-import FormData from 'form-data';
-import axios from 'axios';
-import ffmpeg from 'fluent-ffmpeg';
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import { fileURLToPath } from 'url';
+import uploadFile, { quax, RESTfulAPI, catbox, uguu, filechan, pixeldrain, gofile, krakenfiles, telegraph } from '../lib/uploadFile.js';
+import uploadImage from '../lib/uploadImage.js';
+import fetch from "node-fetch";
+import FormData from "form-data";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const handler = async (m, { args, usedPrefix, command }) => {
+const q = m.quoted ? m.quoted : m;
+const mime = (q.msg || q).mimetype || "";
 
-const handler = async (msg, { conn, command }) => {
-  const chatId = msg.key.remoteJid;
-  const pref = global.prefixes?.[0] || ".";
+if (!mime) throw `*\`⚠️ ¿𝐘 𝐋𝐀 𝐈𝐌𝐀𝐆𝐄𝐍/𝐕𝐈𝐃𝐄𝐎?\`*
 
-  const quoted = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+*• Ejemplo de Uso de ${usedPrefix + command}:*
 
-  function detectMedia(message) {
-    if (!message || typeof message !== 'object') return { type: null, media: null };
+➔ Responde a una imagen, sticker o video corto con el comando: *${usedPrefix + command}*
 
-    const mediaTypes = ['imageMessage', 'videoMessage', 'stickerMessage', 'audioMessage'];
+Subirá automáticamente el archivo a servidores como *qu.ax*, *catbox*, *cdn-skyultraplus*, etc.
 
-    for (const type of mediaTypes) {
-      if (message[type]) return { type: type.replace('Message', '').toLowerCase(), media: message[type] };
-    }
+🌐 *\`¿Quieres elegir un servidor específico?\`*
+> Puedes usar:
 
-    for (const key in message) {
-      if (typeof message[key] === 'object') {
-        const result = detectMedia(message[key]);
-        if (result.type) return result;
-      }
-    }
-    return { type: null, media: null };
-  }
+➔ *${usedPrefix + command} quax*  
+➔ *${usedPrefix + command} catbox*  
+➔ *${usedPrefix + command} sky*
+➔ *${usedPrefix + command} uguu*  
+➔ *${usedPrefix + command} restfulapi*  
+➔ *${usedPrefix + command} gofile*  
+➔ *${usedPrefix + command} telegraph*  
 
-  let typeDetected, mediaMessage;
+📝 *Notas:*
+- *El archivo debe ser una imagen, sticker o video corto.*  
+- *Enlaces de qu.ax y catbox no expiran.*
+- *El CDN de SkyUltraPlus no tiene caducidad y es más rápido (pagando) obtener mas información aqui:* https://cdn.skyultraplus.com`;
 
-  if (quoted) {
-    ({ type: typeDetected, media: mediaMessage } = detectMedia(quoted));
-  } else {
-    ({ type: typeDetected, media: mediaMessage } = detectMedia(msg.message));
-  }
+const media = await q.download();
+if (!media) throw "❌ No se pudo descargar el archivo.";
+const option = (args[0] || "").toLowerCase();
+const services = { quax, restfulapi: RESTfulAPI, catbox, uguu, filechan, pixeldrain, gofile, krakenfiles, telegraph };
+try {
+if (option === "sky") {
+let ext = mime.split("/")[1] || "jpg";
+if (ext === "jpeg") ext = "jpg";
+const form = new FormData();
+form.append("name", "archivo_bot");
+form.append("file", media, {
+filename: `upload.${ext}`,
+contentType: mime,
+});
 
-  if (!mediaMessage || !typeDetected) {
-    return await conn.sendMessage(chatId, {
-      text: `✳️ *Usa:*\n${pref}${command}\n📌 Responde o envía una imagen, video, sticker o audio para subirlo.`
-    }, { quoted: msg });
-  }
+const res = await fetch("https://cdn.skyultraplus.com/upload.php", {
+method: "POST",
+headers: {
+...form.getHeaders(),
+"X-API-KEY": "3ade1171a99a228e",
+},
+body: form,
+});
+const json = await res.json().catch(() => ({}));
+if (!json.ok) throw `Status: ${res.status}\nerror: ${JSON.stringify(json)}`;
+const link = json.file?.url || json.url;
+return m.reply(link);
+}
+    
+if (option && services[option]) {
+const link = await services[option](media);
+return m.reply(link);
+}
 
-  await conn.sendMessage(chatId, { react: { text: '☁️', key: msg.key } });
-
-  try {
-    const tmpDir = path.join(__dirname, 'tmp');
-    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-
-    let rawExt = typeDetected === 'sticker' ? 'webp' :
-      mediaMessage.mimetype ? mediaMessage.mimetype.split('/')[1].split(';')[0] : 'bin';
-    if (rawExt === 'jpeg') rawExt = 'jpg';
-
-    const rawPath = path.join(tmpDir, `${Date.now()}_input.${rawExt}`);
-
-    const stream = await downloadContentFromMessage(mediaMessage, typeDetected === 'sticker' ? 'sticker' : typeDetected);
-    const writeStream = fs.createWriteStream(rawPath);
-    for await (const chunk of stream) writeStream.write(chunk);
-    writeStream.end();
-    await new Promise(resolve => writeStream.on('finish', resolve));
-
-    const stats = fs.statSync(rawPath);
-    if (stats.size > 200 * 1024 * 1024) {
-      fs.unlinkSync(rawPath);
-      throw new Error('⚠️ El archivo excede el límite de 200MB.');
-    }
-
-    let finalPath = rawPath;
-
-    if (typeDetected === 'audio' && ['ogg', 'm4a', 'mpeg'].includes(rawExt)) {
-      finalPath = path.join(tmpDir, `${Date.now()}_converted.mp3`);
-      await new Promise((resolve, reject) => {
-        ffmpeg(rawPath)
-          .audioCodec('libmp3lame')
-          .toFormat('mp3')
-          .on('end', resolve)
-          .on('error', reject)
-          .save(finalPath);
-      });
-      fs.unlinkSync(rawPath);
-    }
-
-    // Subida a SkyUltraPlus CDN
-    const form = new FormData();
-    form.append('name', 'archivo_bot');
-    form.append('file', fs.createReadStream(finalPath));
-
-    const res = await axios.post('https://cdn.skyultraplus.com/upload.php', form, {
-      headers: {
-        ...form.getHeaders(),
-        'X-API-KEY': '3ade1171a99a228e',
-      }
-    });
-
-    fs.unlinkSync(finalPath);
-
-    const json = res.data || {};
-    const url = json.file?.url || json.url;
-
-    if (!url) throw new Error('❌ No se pudo obtener el link de SkyUltraPlus.');
-
-    await conn.sendMessage(chatId, {
-      text: `✅ *Archivo subido exitosamente a SkyUltraPlus:*\n${url}`
-    }, { quoted: msg });
-
-    await conn.sendMessage(chatId, {
-      react: { text: '✅', key: msg.key }
-    });
-
-  } catch (err) {
-    await conn.sendMessage(chatId, {
-      text: `❌ *Error:* ${err.message}`
-    }, { quoted: msg });
-
-    await conn.sendMessage(chatId, {
-      react: { text: '❌', key: msg.key }
-    });
-  }
-};
-
-handler.command = ['tourl3'];
-handler.help = ['tourl'];
-handler.tags = ['herramientas'];
+const isTele = /image\/(png|jpe?g|gif)|video\/mp4/.test(mime);
+const link = await (isTele ? uploadImage : uploadFile)(media);
+return m.reply(link);
+} catch (e) {
+console.error(e);
+throw '❌ Error al subir el archivo. Intenta con otra opción:\n' + Object.keys(services).concat(["skyultra"]).map(v => `➔ ${usedPrefix}${command} ${v}`).join('\n');
+}};
+handler.help = ['tourl <opcional servicio>'];
+handler.tags = ['convertidor'];
+handler.command = /^(upload|tourl7)$/i;
 handler.register = true;
 
 export default handler;
-
