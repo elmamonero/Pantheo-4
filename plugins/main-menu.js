@@ -5,8 +5,7 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
   try {
     await m.react('🧡');
 
-    let imagen = './media/menu.jpg'
-    await conn.sendMessage(m.chat, { image: fs.readFileSync(imagen), caption: texto }, { quoted: m })
+    let imagen = './media/menu.jpg';
     let insta = 'https://chat.whatsapp.com/HvDCvNqXSiW19MFXJmWhoF';
 
     const _uptime = process.uptime() * 1000;
@@ -22,6 +21,9 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
     const botname = 'Pantheon Bot';
     const saludo = 'Bienvenido';
     const fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:${botname}\nEND:VCARD` } } };
+
+    const more = String.fromCharCode(8206);
+    const readMore = more.repeat(4001);
 
     const text = `
 ︵᷼     ⿻ *PANTHEON* ࣪   ࣭  ࣪ *WA BOT* ࣭  🐈  ࣪   ࣭
