@@ -1,11 +1,10 @@
-import fs from 'fs';
 import fetch from 'node-fetch';
 
 const handler = async (m, { conn, usedPrefix, isPrems }) => {
   try {
     await m.react('🧡');
 
-    let imagen = './media/menu1.jpg';
+    let img = 'https://qu.ax/qN1X7';
     let insta = 'https://chat.whatsapp.com/HvDCvNqXSiW19MFXJmWhoF';
 
     const _uptime = process.uptime() * 1000;
@@ -21,9 +20,6 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
     const botname = 'Pantheon Bot';
     const saludo = 'Bienvenido';
     const fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:${botname}\nEND:VCARD` } } };
-
-    const more = String.fromCharCode(8206);
-    const readMore = more.repeat(4001);
 
     const text = `
 ︵᷼     ⿻ *PANTHEON* ࣪   ࣭  ࣪ *WA BOT* ࣭  🐈  ࣪   ࣭
@@ -289,8 +285,8 @@ ${readMore}
 ⠞👑੭ ${usedPrefix}chetar
 ⠞👑੭ ${usedPrefix}unbanuser`.trim();
 
-    await conn.sendMessage(m.chat, {
-      image: fs.readFileSync(imagen),
+    conn.sendMessage(m.chat, {
+      image: { url: img },
       caption: text,
       contextInfo: {
         mentionedJid: [m.sender],
@@ -300,7 +296,6 @@ ${readMore}
     }, { quoted: fkontak });
 
   } catch (e) {
-    console.error(e);
     conn.reply(m.chat, '❎ Error en el comando. Inténtalo más tarde.', m);
   }
 };
@@ -310,6 +305,8 @@ handler.fail = null;
 
 export default handler;
 
+const more = String.fromCharCode(8206)
+const readMore = more.repeat(4001)
 function clockString(ms) {
   const h = isNaN(ms) ? '--' : Math.floor(ms / 3600000);
   const m = isNaN(ms) ? '--' : Math.floor(ms / 60000) % 60;
