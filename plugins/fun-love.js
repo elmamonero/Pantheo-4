@@ -1,14 +1,23 @@
 const handler = async (m, { conn, command, text }) => {
-    // Validación de entrada
-    if (!text) {
+    // Obtener la persona mencionada, citada o el texto ingresado
+    let target = m.mentionedJid && m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : null;
+    
+    let targetName = "";
+    let mentionsArray = [m.sender];
+
+    if (target) {
+        targetName = `@${target.split('@')[0]}`;
+        mentionsArray.push(target);
+    } else if (text) {
+        targetName = text.trim();
+    } else {
         return conn.sendMessage(m.chat, { 
-            text: '*[ ℹ️ ] Por favor, menciona el nombre de la persona con quien deseas calcular el porcentaje de amor.*', 
-            quoted: m 
-        });
+            text: '*[ ℹ️ ] Por favor, menciona a una persona o escribe un nombre para calcular el porcentaje de amor.*' 
+        }, { quoted: m });
     }
 
     // Generación del porcentaje aleatorio
-    const lovePercentage = Math.floor(Math.random() * 100);
+    const lovePercentage = Math.floor(Math.random() * 101); // 0 al 100%
     const isHighLove = lovePercentage >= 50;
 
     // Mensajes para resultados altos y bajos
@@ -45,9 +54,10 @@ const handler = async (m, { conn, command, text }) => {
     const getRandomMessage = (messages) => messages[Math.floor(Math.random() * messages.length)];
     const loveMessage = getRandomMessage(isHighLove ? loveMessages : notSoHighLoveMessages);
 
+    const userTag = `@${m.sender.split('@')[0]}`;
     const response = 
         `━━━━⬣ *💖 LOVE 💖* ⬣━━━━\n` +
-        `*❥ En el universo del amor, ${text} y @${m.sender.split('@')[0]} ${loveDescription} del ${lovePercentage}% de un 100%.*\n\n` +
+        `*❥ En el universo del amor, ${targetName} y ${userTag} ${loveDescription} del ${lovePercentage}% de un 100%.*\n\n` +
         `*💌 ${loveMessage}*\n` +
         `━━━━⬣ *💖 LOVE 💖* ⬣━━━━`;
 
@@ -63,25 +73,23 @@ const handler = async (m, { conn, command, text }) => {
         
         // Enviar mensaje inicial
         let { key } = await conn.sendMessage(m.chat, { 
-            text: "*💞 ¡Calculando Porcentaje! 💞*", 
-            mentions: conn.parseMention(response) 
+            text: "*💞 ¡Calculando Porcentaje! 💞*" 
         }, { quoted: m });
 
         // Editar el mensaje en cada paso de la carga
         for (const progress of hawemod) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            await new Promise(resolve => setTimeout(resolve, 800)); 
             await conn.sendMessage(m.chat, { 
                 text: progress, 
-                edit: key, 
-                mentions: conn.parseMention(response) 
+                edit: key 
             });
         }
 
-        // Mensaje final con el resultado
+        // Mensaje final con el resultado y las menciones aseguradas
         await conn.sendMessage(m.chat, { 
             text: response, 
             edit: key, 
-            mentions: conn.parseMention(response) 
+            mentions: mentionsArray 
         });
     }
 
