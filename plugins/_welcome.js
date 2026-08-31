@@ -14,7 +14,7 @@ export async function before(m, { conn, participants, groupMetadata }) {
   let insta = `https://instagram.com/dev.criss_vx`
   let who = m.messageStubParameters[0]
   let taguser = `@${who.split('@')[0]}`
-  let pp = await conn.profilePictureUrl(m.messageStubParameters[0], 'image').catch(_ => 'https://files.evogb.win/ES9dd5.jpg')
+  let pp = await conn.profilePictureUrl(m.messageStubParameters[0], 'image').catch(_ => 'https://evogb.win/Menu')
   let chat = global.db.data.chats[m.chat]
   
   // Se cambió conn.getName por taguser para que haga la mención correctamente

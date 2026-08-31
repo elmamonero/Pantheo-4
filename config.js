@@ -65,8 +65,8 @@ global.etiqueta = 'Pantheon Bot'
 global.moneda = 'Diamantes'
 global.welcom1 = '❍ Edita Con El Comando setwelcome'
 global.welcom2 = '❍ Edita Con El Comando setbye'
-global.banner = 'https://files.evogb.win/ES9dd5.jpg'
-global.avatar = 'https://files.evogb.win/ES9dd5.jpg'
+global.banner = 'https://evogb.win/Menu'
+global.avatar = 'https://evogb.win/Menu'
 
 //*─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─⭒─ׄ─ׅ─ׄ─*
 

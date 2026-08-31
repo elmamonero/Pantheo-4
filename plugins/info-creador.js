@@ -24,7 +24,7 @@ let handler = async (m, { conn, usedPrefix, text, args, command }) => {
                 showAdAttribution: true,
                 title: '¡Hola! ʏᴏ sᴏʏ ᴇʟ ᴄʀᴇᴀᴅᴏʀ ᴅᴇ Pᴀɴᴛʜᴇᴏɴ Bᴏᴛ!',
                 body: dev,
-                thumbnailUrl: 'https://files.evogb.win/ES9dd5.jpg',
+                thumbnailUrl: 'https://evogb.win/Menu',
                 sourceUrl: 'https://wa.me/50587489794?text=Vengo+Del+Comando+.owner',
                 mediaType: 1,
                 renderLargerThumbnail: true

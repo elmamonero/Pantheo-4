@@ -45,8 +45,8 @@ let handler = async (m, { conn, text }) => {
   ]
 
   const imagenes = [
-    'https://files.evogb.win/ES9dd5.jpg',
-    'https://files.evogb.win/ES9dd5.jpg',
+    'https://evogb.win/Menu',
+    'https://evogb.win/Menu',
   ]
 
   const respuesta = respuestas[Math.floor(Math.random() * respuestas.length)]
