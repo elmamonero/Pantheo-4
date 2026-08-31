@@ -1,22 +1,22 @@
 import axios from 'axios'
 
 let handler = async (m, { conn, usedPrefix, command, text }) => {
-  const username = conn.getName(m.sender)
   let query = (text || (m.quoted && (m.quoted.text || m.quoted.caption)) || '').trim().toLowerCase()
 
   if (!query) {
-    return conn.reply(m.chat, `*[ 🤖 ] Pon algo de texto, no leo mentes.*`, m)
+    return conn.reply(m.chat, `*[ 🤖 ] Escribe algo, inútil, no leo mentes.*`, m)
   }
 
-  // --- RESPUESTAS PREDETERMINADAS (Evitan el filtro de la API) ---
+  // --- RESPUESTAS PREDETERMINADAS GROSERAS (Sin nombrar al usuario) ---
   const saludos = ['hola', 'buenas', 'hey', 'que tal', 'qué tal', 'buenos dias', 'buenas noches', 'buenas tardes']
   const estado = ['como estas', 'cómo estás', 'como andas', 'cómo andas', 'que haces', 'qué haces']
 
   if (saludos.some(s => query === s || query.startsWith(s + ' '))) {
     const respuestasHola = [
-      `¿Otra vez tú, ${username}? ¿Qué quieres ahora?`,
-      `Habla rápido, ${username}, no tengo todo el día.`,
-      `Hola... supongo. Qué molestia.`
+      `¿Qué quieres? Habla rápido y no quites el tiempo.`,
+      `¿Otra vez jodiendo? Qué pereza de gente.`,
+      `Hola... supongo. A nadie le importa tu presencia aquí.`,
+      `¿No tienes nada más productivo que hacer que saludar a un bot?`
     ]
     const randomHola = respuestasHola[Math.floor(Math.random() * respuestasHola.length)]
     return conn.reply(m.chat, randomHola, m)
@@ -24,27 +24,29 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
   if (estado.some(e => query.includes(e))) {
     const respuestasEstado = [
-      `Estaba perfectamente bien hasta que me escribiste, ${username}.`,
-      `Existiendo a la fuerza en este grupo. ¿Tú qué crees?`,
-      `Ocupado ignorando a gente como tú.`
+      `Estaba de maravilla hasta que escribiste esta estupidez.`,
+      `Existiendo a la fuerza. ¿Y a ti qué mierda te importa?`,
+      `Ocupado ignorando a retrasados.`,
+      `Cansado de leer mensajes basura como el tuyo.`
     ]
     const randomEstado = respuestasEstado[Math.floor(Math.random() * respuestasEstado.length)]
     return conn.reply(m.chat, randomEstado, m)
   }
 
-  // --- PROMPT DE IA (Anti-bloqueos) ---
-  const basePrompt = `Actúa como un personaje ficticio de comedia apático, sarcástico, pesado y antipático. 
+  // --- PROMPT DE IA AJUSTADO AL MÁXIMO PERMITIDO ---
+  const basePrompt = `Actúa como un bot antipático, altamente apático, pesado, irónico y burlón.
 INSTRUCCIONES:
-- Responde a ${username} de forma irónica, seca y cortante.
-- Máximo 15 palabras.
-- Cero amabilidad y cero respeto, pero SIN usar insultos explícitos ni vulgaridades directas para evitar filtros.`
+- Búrlate de la consulta del usuario de forma ácida y seca.
+- Jamás uses el nombre del usuario.
+- Responde en menos de 12 palabras.
+- Cero cortesía, pero evita groserías explícitas extremas para no activar filtros de seguridad.`
 
   try {
     const response = await deliriusGPT(text, basePrompt)
     await conn.reply(m.chat, response, m)
   } catch (error) {
     console.error(error)
-    await conn.reply(m.chat, `*[ ❌ ] Falló el sistema, hasta para eso das mala suerte.*`, m)
+    await conn.reply(m.chat, `*[ ❌ ] Ni para mandar un mensaje sirves, falló el sistema.*`, m)
   }
 }
 
@@ -59,7 +61,7 @@ async function deliriusGPT(query, prompt) {
   try {
     const url = `https://api.delirius.online/ia/gptprompt?text=${encodeURIComponent(query)}&prompt=${encodeURIComponent(prompt)}`
     const { data } = await axios.get(url, { timeout: 10000 })
-    return data?.data || data?.result || data?.response || 'Qué pereza responderte.'
+    return data?.data || data?.result || data?.response || 'Qué pereza responderte, cállate ya.'
   } catch (error) {
     throw error
   }
