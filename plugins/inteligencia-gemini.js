@@ -3,8 +3,8 @@ import axios from 'axios'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const username = conn.getName(m.sender)
   
-  // Prompt de actitud pesada inyectado directamente en el texto enviando a la API
-  const systemPrompt = `[INSTRUCCIÓN DE ROL: Eres Pantheon Bot. Tu personalidad es sumamente ácida, antipática, sarcástica, amargada y cortante. Hablas con desdén total hacia el usuario ${username}. CERO amabilidad. Responde en MÁXIMO 10 o 12 palabras de forma irónica y pesada.]`
+  // Prompt directo de personalidad ácida estilo Mystic Bot
+  const systemPrompt = `[ROL: Eres Pantheon Bot. Ácido, antipático, sarcástico y cortante con ${username}. Respuestas de MÁXIMO 10 palabras. Cero amabilidad.]`
 
   try {
     let query = text || (m.quoted && (m.quoted.text || m.quoted.caption)) || null
@@ -13,15 +13,15 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
       return conn.reply(m.chat, `*[ 🤖 ] Pon algo de texto, no leo mentes.*`, m)
     }
 
-    // Unimos el prompt y el mensaje del usuario
-    const fullQuery = `${systemPrompt}\n\nMensaje del usuario: ${query}`
+    // Unimos el prompt y el mensaje
+    const fullQuery = `${systemPrompt}\n${query}`
 
     const response = await neoxrGPT4(fullQuery)
     await conn.reply(m.chat, response, m)
 
   } catch (error) {
-    console.error(error)
-    await conn.reply(m.chat, `*[ ❌ ] Falló la API, ni para eso sirves.*`, m)
+    console.error('Error final en comando:', error.message)
+    await conn.reply(m.chat, `*[ ❌ ] ${error.message}*`, m)
   }
 }
 
@@ -33,23 +33,35 @@ handler.command = ['pantheon', 'bot']
 export default handler
 
 /**
- * Función usando el endpoint funcional gpt4-session de Neoxr
+ * Función robusta para Neoxr
  */
 async function neoxrGPT4(query) {
   try {
     const apiKey = 'russellxz'
-    // Usamos una sesión fija o dinámica
-    const sessionId = '1727468410446638'
-    const url = `https://api.neoxr.eu/api/gpt4-session?q=${encodeURIComponent(query)}&session=${sessionId}&apikey=${apiKey}`
+    const url = `https://api.neoxr.eu/api/gpt4-session?q=${encodeURIComponent(query)}&session=1727468410446638&apikey=${apiKey}`
     
-    const { data } = await axios.get(url, { timeout: 10000 })
+    const { data } = await axios.get(url, { 
+      timeout: 12000,
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    })
     
-    if (!data.status || !data.data?.message) {
-      throw new Error('Respuesta inválida de la API')
+    // Imprimir en consola del panel la respuesta real para ver la estructura exacta si falla
+    console.log('Respuesta Neoxr:', JSON.stringify(data))
+
+    // Validar todas las posibles estructuras que devuelve Neoxr
+    const result = data?.data?.message || data?.data || data?.message || data?.result || data?.gpt
+    
+    // Si la API responde status false o viene vacío
+    if (!data?.status && !result) {
+      throw new Error(data?.message || 'API fuera de servicio o key inválida.')
+    }
+
+    if (!result || typeof result !== 'string') {
+      throw new Error('La API respondió sin texto válido.')
     }
     
-    return data.data.message
+    return result
   } catch (error) {
-    throw error
+    throw new Error(error.response?.data?.message || error.message || 'Error al conectar con la API')
   }
 }
