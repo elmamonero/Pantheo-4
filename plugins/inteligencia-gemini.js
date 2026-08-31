@@ -3,14 +3,8 @@ import axios from 'axios'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const username = conn.getName(m.sender)
   
-  // PROMPT ADAPTADO (Evita los filtros de seguridad pero mantiene la actitud ácida)
-  const basePrompt = `Actúa como Pantheon Bot, un personaje ficticio de comedia negra, sumamente apático, sarcástico, pesado y antipático.
-INSTRUCCIONES DE PERSONAJE:
-- Tu humor es ácido, seco, amargado e irritante.
-- MÁXIMO 10 A 15 PALABRAS por respuesta. Sé ultra breve.
-- Cero amabilidad, cero saludos educados y cero respeto servil.
-- Trata a ${username} con total desdén, burla y desinterés, como si te molestara responderle.
-- Responde de forma cortante, irónica y pesada sin usar palabrotas explícitas para no romper las reglas de emisión.`
+  // Prompt de actitud pesada inyectado directamente en el texto enviando a la API
+  const systemPrompt = `[INSTRUCCIÓN DE ROL: Eres Pantheon Bot. Tu personalidad es sumamente ácida, antipática, sarcástica, amargada y cortante. Hablas con desdén total hacia el usuario ${username}. CERO amabilidad. Responde en MÁXIMO 10 o 12 palabras de forma irónica y pesada.]`
 
   try {
     let query = text || (m.quoted && (m.quoted.text || m.quoted.caption)) || null
@@ -19,12 +13,15 @@ INSTRUCCIONES DE PERSONAJE:
       return conn.reply(m.chat, `*[ 🤖 ] Pon algo de texto, no leo mentes.*`, m)
     }
 
-    const response = await deliriusGPT(query, basePrompt)
+    // Unimos el prompt y el mensaje del usuario
+    const fullQuery = `${systemPrompt}\n\nMensaje del usuario: ${query}`
+
+    const response = await neoxrGPT4(fullQuery)
     await conn.reply(m.chat, response, m)
 
   } catch (error) {
     console.error(error)
-    await conn.reply(m.chat, `*[ ❌ ] Ni para mandar un mensaje sirves, falló el sistema.*`, m)
+    await conn.reply(m.chat, `*[ ❌ ] Falló la API, ni para eso sirves.*`, m)
   }
 }
 
@@ -35,11 +32,23 @@ handler.command = ['pantheon', 'bot']
 
 export default handler
 
-async function deliriusGPT(query, prompt) {
+/**
+ * Función usando el endpoint funcional gpt4-session de Neoxr
+ */
+async function neoxrGPT4(query) {
   try {
-    const url = `https://api.delirius.online/ia/gptprompt?text=${encodeURIComponent(query)}&prompt=${encodeURIComponent(prompt)}`
+    const apiKey = 'russellxz'
+    // Usamos una sesión fija o dinámica
+    const sessionId = '1727468410446638'
+    const url = `https://api.neoxr.eu/api/gpt4-session?q=${encodeURIComponent(query)}&session=${sessionId}&apikey=${apiKey}`
+    
     const { data } = await axios.get(url, { timeout: 10000 })
-    return data?.data || data?.result || data?.response || 'Qué pereza responderte.'
+    
+    if (!data.status || !data.data?.message) {
+      throw new Error('Respuesta inválida de la API')
+    }
+    
+    return data.data.message
   } catch (error) {
     throw error
   }
