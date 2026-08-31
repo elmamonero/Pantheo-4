@@ -3,65 +3,43 @@ import axios from 'axios'
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   const username = conn.getName(m.sender)
   
-  // Prompt directo de personalidad ácida estilo Mystic Bot
-  const systemPrompt = `[ROL: Eres Pantheon Bot. Ácido, antipático, sarcástico y cortante con ${username}. Respuestas de MÁXIMO 10 palabras. Cero amabilidad.]`
+  // PROMPT BURLÓN Y GROSERO
+  const basePrompt = `Eres un bot de WhatsApp sumamente grosero, burlón, pesado y sarcástico. 
+INSTRUCCIONES:
+- Responde a ${username} con tono de burla pesado, humillante y ácida.
+- Máximo 15 palabras por respuesta. Sé ultra cortante.
+- Hazle sentir que su pregunta es una estupidez.
+- Puedes usar jerga pesada y burlas directas, pero sin caer en censura extrema de la API.`
 
   try {
     let query = text || (m.quoted && (m.quoted.text || m.quoted.caption)) || null
 
     if (!query) {
-      return conn.reply(m.chat, `*[ 🤖 ] Pon algo de texto, no leo mentes.*`, m)
+      return conn.reply(m.chat, `*[ 🤖 ] Escribe algo, pedazo de inútil, no leo mentes.*`, m)
     }
 
-    // Unimos el prompt y el mensaje
-    const fullQuery = `${systemPrompt}\n${query}`
-
-    const response = await neoxrGPT4(fullQuery)
+    const response = await deliriusGPT(query, basePrompt)
     await conn.reply(m.chat, response, m)
 
   } catch (error) {
-    console.error('Error final en comando:', error.message)
-    await conn.reply(m.chat, `*[ ❌ ] ${error.message}*`, m)
+    console.error(error)
+    await conn.reply(m.chat, `*[ ❌ ] Ni para escribir sirves, falló el sistema.*`, m)
   }
 }
 
-handler.help = ['ia']
-handler.tags = ['tools']
+handler.help = ['bot']
+handler.tags = ['fun']
 handler.register = true
-handler.command = ['pantheon', 'bot'] 
+handler.command = ['bot', 'pantheon'] 
 
 export default handler
 
-/**
- * Función robusta para Neoxr
- */
-async function neoxrGPT4(query) {
+async function deliriusGPT(query, prompt) {
   try {
-    const apiKey = 'russellxz'
-    const url = `https://api.neoxr.eu/api/gpt4-session?q=${encodeURIComponent(query)}&session=1727468410446638&apikey=${apiKey}`
-    
-    const { data } = await axios.get(url, { 
-      timeout: 12000,
-      headers: { 'User-Agent': 'Mozilla/5.0' }
-    })
-    
-    // Imprimir en consola del panel la respuesta real para ver la estructura exacta si falla
-    console.log('Respuesta Neoxr:', JSON.stringify(data))
-
-    // Validar todas las posibles estructuras que devuelve Neoxr
-    const result = data?.data?.message || data?.data || data?.message || data?.result || data?.gpt
-    
-    // Si la API responde status false o viene vacío
-    if (!data?.status && !result) {
-      throw new Error(data?.message || 'API fuera de servicio o key inválida.')
-    }
-
-    if (!result || typeof result !== 'string') {
-      throw new Error('La API respondió sin texto válido.')
-    }
-    
-    return result
+    const url = `https://api.delirius.online/ia/gptprompt?text=${encodeURIComponent(query)}&prompt=${encodeURIComponent(prompt)}`
+    const { data } = await axios.get(url, { timeout: 10000 })
+    return data?.data || data?.result || data?.response || 'Qué pereza responderte, cállate ya.'
   } catch (error) {
-    throw new Error(error.response?.data?.message || error.message || 'Error al conectar con la API')
+    throw error
   }
 }
