@@ -10,7 +10,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
   2. NO SALUDES SIEMPRE: Ve directo al grano. Si te saludan, responde algo corto y sarcástico sin decir "Hola" obligatoriamente.
   3. MODO INVESTIGACIÓN: Solo si te piden una tarea o investigación seria, puedes usar más texto, pero mantente profesional y directo.
   4. MODO CASUAL: Sé bromista, ácido y un poco grosero, pero muy breve. 
-  5. Llama al usuario ${username} solo si vas a burlarte o es estrictamente necesario.`
+  5. Llama al usuario ${username} solo si vas a burlarte o es strictly necesario.`
 
   try {
     // Definimos el query de forma segura
@@ -23,8 +23,8 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
     // Efecto de "escribiendo"
     await conn.sendPresenceUpdate('composing', m.chat)
 
-    // Llamada a la API de Sylphy (Gemini)
-    const response = await sylphyGemini(query, basePrompt)
+    // Llamada a la API de Delirius
+    const response = await deliriusGPT(query, basePrompt)
     
     // Enviamos la respuesta final
     await conn.reply(m.chat, response, m)
@@ -49,20 +49,19 @@ handler.command = ['pantheon', 'bot']
 export default handler
 
 /**
- * Función para conectar con la API de Sylphy (Gemini)
+ * Función para conectar con la API de Delirius (GPT Prompt)
  */
-async function sylphyGemini(query, prompt) {
+async function deliriusGPT(query, prompt) {
   try {
-    const apiKey = 'sylphy-KthGG9y'
-    const url = `https://sylphy.xyz/ai/gemini?q=${encodeURIComponent(query)}&prompt=${encodeURIComponent(prompt)}&api_key=${apiKey}`
+    const url = `https://api.delirius.online/ia/gptprompt?text=${encodeURIComponent(query)}&prompt=${encodeURIComponent(prompt)}`
     
-    const response = await axios.get(url)
+    const { data } = await axios.get(url)
     
-    // Ruta del JSON: response.data.result.text
-    const result = response.data?.result?.text || response.data?.result || response.data?.response
+    // Ruta del JSON según la estructura de Delirius (data.data)
+    const result = data?.data || data?.result || data?.response
     
     if (!result) {
-      throw new Error('La IA no respondió nada.')
+      throw new Error('La API de Delirius no devolió una respuesta válida.')
     }
     
     return result
