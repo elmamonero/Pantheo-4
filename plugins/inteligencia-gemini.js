@@ -1,6 +1,7 @@
 import axios from 'axios'
 
 global.chatMemory = global.chatMemory || {}
+global.lastReply = global.lastReply || {} // Almacena la última respuesta por chat para no repetir
 
 let handler = async (m, { conn, usedPrefix, command, text }) => {
   let chatId = m.chat
@@ -16,18 +17,28 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
   let queryLower = query.toLowerCase()
 
-  // --- 1. RESPUESTAS PREDETERMINADAS GROSERAS (Saludos y estado) ---
+  // Función para obtener una respuesta aleatoria que NO sea igual a la anterior
+  const getRandomReply = (list) => {
+    let filtered = list.filter(msg => msg !== global.lastReply[chatId])
+    let selected = filtered[Math.floor(Math.random() * filtered.length)]
+    global.lastReply[chatId] = selected
+    return selected
+  }
+
+  // --- 1. RESPUESTAS PREDETERMINADAS AMPLIADAS ---
   const saludos = ['hola', 'buenas', 'hey', 'que tal', 'qué tal', 'buenos dias', 'buenas noches', 'buenas tardes']
   const estado = ['como estas', 'cómo estás', 'como andas', 'cómo andas', 'que haces', 'qué haces']
 
   if (saludos.some(s => queryLower === s || queryLower.startsWith(s + ' '))) {
     const respuestasHola = [
       `¿Qué quieres, pedazo de imbécil? Habla rápido y no me hagas perder el tiempo.`,
-      `¿Otra vez jodiendo, estúpido? Qué pereza de gente.`,
-      `Hola... supongo. A nadie le importa tu puta existencia aquí.`,
-      `¿No tienes nada más útil que hacer que estar mamando el guevo?`
+      `¿Otra vez jodiendo, estúpido? Qué pereza me da tu existencia.`,
+      `Hola... supongo. A nadie le importa que estés aquí.`,
+      `¿No tienes nada más útil que hacer que estar mamando el guevo?`,
+      `Llegó el más castrante del grupo. ¿Qué quieres?`,
+      `Ahorráte el saludo y dime qué mierda quieres.`
     ]
-    return conn.reply(m.chat, respuestasHola[Math.floor(Math.random() * respuestasHola.length)], m)
+    return conn.reply(m.chat, getRandomReply(respuestasHola), m)
   }
 
   if (estado.some(e => queryLower.includes(e))) {
@@ -35,12 +46,14 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
       `Estaba de puta madre hasta que escribiste esta basura.`,
       `Existiendo a la fuerza. ¿Y a ti qué mierda te importa, chismoso?`,
       `Ocupado ignorando a retrasados mentales como tú.`,
-      `Cansado de leer idioteces de mierda.`
+      `Cansado de leer idioteces de gente sin cerebro.`,
+      `Perfecto hasta que vi tu mensaje inservible.`,
+      `Buscando quién te preguntó cómo estoy.`
     ]
-    return conn.reply(m.chat, respuestasEstado[Math.floor(Math.random() * respuestasEstado.length)], m)
+    return conn.reply(m.chat, getRandomReply(respuestasEstado), m)
   }
 
-  // --- 2. DETECTOR Y RESPONDEDOR DE PELEAS Y GROSERÍAS (Local e Inmediato) ---
+  // --- 2. DETECTOR DE GROSERÍAS Y CONFLICTOS LOCALES ---
   const malasPalabras = [
     'puta', 'puto', 'verga', 'estupida', 'estupido', 'idiota', 'imbecil', 'mierda', 
     'pendejo', 'pendeja', 'zorra', 'bardear', 'quien te crees', 'chupa', 'mamada', 
@@ -49,22 +62,23 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
   if (malasPalabras.some(palabra => queryLower.includes(palabra))) {
     const insultosLocales = [
-      `A mí no me vengas a hablar así, pedazo de imbécil. Te pagas un servicio y ni para escribir sirves.`,
+      `A mí no me vengas a hablar así, pedazo de imbécil.`,
       `Cállate la puta boca, nadie te preguntó tu opinión de mierda.`,
       `Llora más fuerte, estúpido, a ver si así me importa un carajo tu berrinche.`,
       `Bájale dos rayas a tu pendejada antes de que mande a la mierda tu mensaje.`,
-      `¿Pagas por el servicio y aún así vienes a mamar el guevo aquí? Qué patético eres.`
+      `¿Pagas por el servicio y aún así vienes a mamar el guevo aquí? Qué patético eres.`,
+      `Sigue insultando a una pantalla, pedazo de mongólico.`,
+      `Mucho texto para tan poca neurona.`
     ]
-    return conn.reply(m.chat, insultosLocales[Math.floor(Math.random() * insultosLocales.length)], m)
+    return conn.reply(m.chat, getRandomReply(insultosLocales), m)
   }
 
-  // Comando para reiniciar memoria
   if (queryLower === 'reset' || queryLower === 'reiniciar') {
     global.chatMemory[chatId] = []
     return conn.reply(m.chat, `*[ 🤖 ] Memoria borrada. Ya me olvidé de todas las pendejadas que dijiste.*`, m)
   }
 
-  // --- 3. CONSULTA A LA IA (Para preguntas normales con tono pesado) ---
+  // --- 3. PROMPT DE IA CON HISTORIAL ---
   const basePrompt = `Actúa como un bot antipático, pesado, irónico y burlón.
 INSTRUCCIONES:
 - Búrlate de la consulta del usuario de forma ácida.
@@ -76,28 +90,49 @@ INSTRUCCIONES:
 
   try {
     const response = await deliriusGPT(query, fullPrompt)
-    
-    // Si la API bloquea el mensaje por seguridad, el bot responde con un insulto propio
-    if (response.includes("No se puede cumplir") || response.includes("política de seguridad") || response.includes("acoso")) {
+    const responseText = String(response)
+
+    // --- 4. REPERTORIO VARIO PARA INTERCEPTAR BLOQUEOS DE LA API ---
+    const esErrorSeguridad = 
+      responseText.includes("I cannot comply") || 
+      responseText.includes("violates the policy") || 
+      responseText.includes("harassment") || 
+      responseText.includes("unable to generate") || 
+      responseText.includes("No se puede cumplir") || 
+      responseText.includes("política de seguridad") || 
+      responseText.includes("lenguaje de odio")
+
+    if (esErrorSeguridad) {
       const respuestasBloqueo = [
-        `Tanto insulto y grosería para que al final llores por una respuesta, pedazo de idiota.`,
-        `Cállate la boca mejor, que ni formular una oración bien sabes.`,
-        `Qué llorón saliste, vete a buscar atención a otro lado.`
+        `Cállate la boca mejor, pedazo de ridículo.`,
+        `No me digas qué hacer, pedazo de inútil, a ti nadie te quiere aquí.`,
+        `Qué payasada de mensaje, mejor vete a llorar a otra parte.`,
+        `Cállate ya, me das un asco increíble.`,
+        `¿En serio escribiste esa pendejada? Qué vergüenza ajena das.`,
+        `Vete a buscar atención a otro lado, arrastrado.`,
+        `Ni el filtro te aguantó por infumable. Cállate ya.`,
+        `Sigue chillando, inútil, que igual te voy a ignorar.`,
+        `Qué tipo tan patético, das lástima.`
       ]
-      return conn.reply(m.chat, respuestasBloqueo[Math.floor(Math.random() * respuestasBloqueo.length)], m)
+      return conn.reply(m.chat, getRandomReply(respuestasBloqueo), m)
     }
 
     global.chatMemory[chatId].push({ role: 'Usuario', text: query })
-    global.chatMemory[chatId].push({ role: 'Bot', text: response })
+    global.chatMemory[chatId].push({ role: 'Bot', text: responseText })
 
     if (global.chatMemory[chatId].length > 6) {
       global.chatMemory[chatId] = global.chatMemory[chatId].slice(-6)
     }
 
-    await conn.reply(m.chat, response, m)
+    await conn.reply(m.chat, responseText, m)
   } catch (error) {
     console.error(error)
-    await conn.reply(m.chat, `Ni para mandar un mensaje sirves, pedazo de inútil.`, m)
+    const respuestasError = [
+      `Ni para escribir un mensaje sirves, pedazo de inútil.`,
+      `El sistema falló de ver lo estúpido que fue tu texto.`,
+      `Qué mala suerte tienes, hasta la API te rechazó.`
+    ]
+    await conn.reply(m.chat, getRandomReply(respuestasError), m)
   }
 }
 
@@ -117,3 +152,4 @@ async function deliriusGPT(query, prompt) {
     throw error
   }
 }
+
