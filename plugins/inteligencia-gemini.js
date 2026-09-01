@@ -17,6 +17,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
 
   let queryLower = query.toLowerCase()
 
+  // Selección aleatoria sin repetir el mensaje anterior en el chat
   const getRandomReply = (list) => {
     let filtered = list.filter(msg => msg !== global.lastReply[chatId])
     let selected = filtered[Math.floor(Math.random() * filtered.length)]
@@ -24,7 +25,7 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
     return selected
   }
 
-  // --- 1. SALUDOS Y ESTADOS PREDETERMINADOS ---
+  // --- 1. SALUDOS Y PREGUNTAS FRECUENTES ---
   const saludos = ['hola', 'buenas', 'hey', 'que tal', 'qué tal', 'buenos dias', 'buenas noches', 'buenas tardes']
   const estado = ['como estas', 'cómo estás', 'como andas', 'cómo andas', 'que haces', 'qué haces']
 
@@ -33,7 +34,8 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
       `¿Qué quieres? Habla rápido y no me hagas perder el tiempo.`,
       `¿Otra vez jodiendo? Qué pereza me da tu existencia.`,
       `Hola... supongo. A nadie le importa que estés aquí.`,
-      `Ahorráte el saludo y dime qué quieres.`
+      `Ahorráte el saludo y dime qué quieres.`,
+      `Llegó el más castrante del grupo. ¿Qué quieres ahora?`
     ]
     return conn.reply(m.chat, getRandomReply(respuestasHola), m)
   }
@@ -48,18 +50,39 @@ let handler = async (m, { conn, usedPrefix, command, text }) => {
     return conn.reply(m.chat, getRandomReply(respuestasEstado), m)
   }
 
+  // --- 2. PALABRAS DE ALTO RIESGO / PROVOCACIONES FRECUENTES ---
+  // Términos que la API suele bloquear o responder con errores de políticas
+  const palabrasSensibles = [
+    'vrg', 'verga', 'pene', 'pito', 'mamada', 'mamar', 'semen', 'sexi', 'sexo',
+    'puta', 'puto', 'zorra', 'prostituta', 'violacion', 'matar', 'muert', 'suicid',
+    'acoso', 'racista', 'nigga', 'nazi', 'porno', 'tetas', 'culos', 'parada', 'chupar'
+  ]
+
+  if (palabrasSensibles.some(palabra => queryLower.includes(palabra))) {
+    const respuestasSensibles = [
+      `Qué asco de comentario, guárdate tus cochinadas.`,
+      `¿En serio preguntas esa estupidez? Das bastante pena ajena.`,
+      `Qué patético saliste con ese tema, búscate una vida.`,
+      `A nadie le interesan tus vulgaridades, enfermito.`,
+      `Cállate la boca y deja de escribir semejantes pendejadas.`,
+      `Cero neuronas para redactar algo decente, qué pereza de usuario.`,
+      `Sigue hablando solo con tus chistes de quinta.`
+    ]
+    return conn.reply(m.chat, getRandomReply(respuestasSensibles), m)
+  }
+
   if (queryLower === 'reset' || queryLower === 'reiniciar') {
     global.chatMemory[chatId] = []
     return conn.reply(m.chat, `*[ 🤖 ] Memoria borrada. Ya me olvidé de tus mensajes.*`, m)
   }
 
-  // --- 2. PROMPT DE IA CON HISTORIAL ---
+  // --- 3. PROMPT DE IA CON HISTORIAL ---
   const basePrompt = `Actúa como un bot antipático, pesado, irónico y burlón.
 INSTRUCCIONES:
-- Búrlate de la consulta del usuario de forma ácida y sarcástica.
+- Búrlate de la consulta del usuario de forma ácida y corta.
 - Jamás uses el nombre del usuario.
 - Responde en menos de 15 palabras.
-- Si el usuario te reclama, respóndele de forma apática y burlona.`
+- Si el usuario te reclama o reacciona mal, respóndele con desdén.`
 
   let contextHistory = global.chatMemory[chatId].map(h => `${h.role}: ${h.text}`).join('\n')
   let fullPrompt = `${basePrompt}\n\nHistorial reciente:\n${contextHistory}`
@@ -68,7 +91,7 @@ INSTRUCCIONES:
     const response = await deliriusGPT(query, fullPrompt)
     const responseText = String(response)
 
-    // --- 3. INTERCEPTOR DE ERRORES DE SEGURIDAD (Variado para no repetir) ---
+    // --- 4. DETECTOR GENERAL DE ERRORES DE MODERACIÓN / SEGURIDAD DE LA API ---
     const esErrorSeguridad = 
       responseText.includes("I cannot comply") || 
       responseText.includes("violates the policy") || 
@@ -76,7 +99,11 @@ INSTRUCCIONES:
       responseText.includes("unable to generate") || 
       responseText.includes("No se puede cumplir") || 
       responseText.includes("política de seguridad") || 
-      responseText.includes("lenguaje de odio")
+      responseText.includes("lenguaje de odio") ||
+      responseText.includes("conductas de índole sexual") ||
+      responseText.includes("contenido de acoso") ||
+      responseText.includes("política respecto") ||
+      responseText.includes("términos de servicio")
 
     if (esErrorSeguridad) {
       const respuestasBloqueo = [
@@ -85,7 +112,8 @@ INSTRUCCIONES:
         `¿En serio te ardiste tanto por una respuesta?`,
         `Qué llorón te pones cuando no sabes qué responder.`,
         `Mucho texto para decir absolutamente nada.`,
-        `Vete a pelear con una pared mejor.`
+        `Vete a pelear con una pared mejor, ridículo.`,
+        `Ni la IA te aguanta lo pesado que eres.`
       ]
       return conn.reply(m.chat, getRandomReply(respuestasBloqueo), m)
     }
