@@ -1,6 +1,9 @@
+// Memoria global para almacenar las listas activas de interna6fem
+global.interna6fem = global.interna6fem || {};
+
 const handler = async (m, { conn, args }) => {
     if (args.length < 3) {
-        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM, y el país (MX, CO, CL, AR, PE, EC).', m);
+        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM y el país (MX, CO, CL, AR, PE, EC).\nEjemplo: *.interna6fem 08:00 PM CO*', m);
         return;
     }
 
@@ -19,98 +22,187 @@ const handler = async (m, { conn, args }) => {
         return;
     }
 
+    const timezones = {
+        MX: 'America/Mexico_City',
+        CO: 'America/Bogota',
+        PE: 'America/Lima',
+        EC: 'America/Guayaquil',
+        CL: 'America/Santiago',
+        AR: 'America/Argentina/Buenos_Aires'
+    };
+
+    if (!(pais in timezones)) {
+        conn.reply(m.chat, 'País no válido. Usa MX, CO, CL, AR, PE o EC.', m);
+        return;
+    }
+
+    // Convertir a hora formato 24h
     let [hora, minutos] = horaUsuario.split(':').map(Number);
     if (ampm === 'PM' && hora !== 12) hora += 12;
     if (ampm === 'AM' && hora === 12) hora = 0;
 
-    const diferenciasHorarias = {
-        MX: -1, // UTC-6
-        CO: 0,  // UTC-5
-        CL: 2,  // UTC-4
-        AR: 2,  // UTC-3
-        PE: 0,  // UTC-5
-        EC: 0   // UTC-5
-    };
+    // Calcular la fecha según la zona horaria dada
+    const now = new Date();
+    const tzOrigen = timezones[pais];
+    
+    const formatterOrigen = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzOrigen,
+        year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+    const parts = formatterOrigen.formatToParts(now);
+    const dateMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
 
-    if (!(pais in diferenciasHorarias)) {
-        conn.reply(m.chat, 'País no válido. Usa MX para México, CO para Colombia, CL para Chile, AR para Argentina, PE para Perú o EC para Ecuador.', m);
+    const isoString = `${dateMap.year}-${dateMap.month}-${dateMap.day}T${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`;
+    
+    const horasEnPais = {};
+    for (const key in timezones) {
+        const dateTarget = new Date(new Date(isoString).toLocaleString('en-US', { timeZone: tzOrigen }));
+        const dateLocal = new Date(isoString);
+        const diff = dateLocal.getTime() - dateTarget.getTime();
+        
+        const finalDate = new Date(dateLocal.getTime() + diff);
+
+        const fmt = new Intl.DateTimeFormat('es-ES', {
+            timeZone: timezones[key],
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        horasEnPais[key] = fmt.format(finalDate).toUpperCase();
+    }
+
+    const e1 = [];
+    const e2 = [];
+    const suplentes = [];
+
+    const textoBase = generarTexto(horasEnPais, e1, e2, suplentes, m.sender);
+
+    const sentMsg = await conn.sendMessage(m.chat, { 
+        text: textoBase, 
+        mentions: [m.sender] 
+    }, { quoted: m });
+
+    global.interna6fem[sentMsg.key.id] = {
+        chat: m.chat,
+        horasEnPais,
+        organizador: m.sender,
+        e1,
+        e2,
+        suplentes,
+        timestamp: Date.now()
+    };
+};
+
+handler.before = async function (m, { conn }) {
+    if (!m.message?.reactionMessage) return;
+
+    const reaction = m.message.reactionMessage;
+    const msgId = reaction.key.id;
+    const emoji = reaction.text;
+    const sender = m.sender;
+
+    if (!global.interna6fem || !global.interna6fem[msgId]) return;
+
+    const game = global.interna6fem[msgId];
+    const tiempoLimite = 20 * 60 * 1000;
+    if (Date.now() - game.timestamp > tiempoLimite) {
+        delete global.interna6fem[msgId];
         return;
     }
 
-    const diferenciaHoraria = diferenciasHorarias[pais];
+    // Remover al usuario antes de reasignar por la nueva reacción
+    game.e1 = game.e1.filter(user => user !== sender);
+    game.e2 = game.e2.filter(user => user !== sender);
+    game.suplentes = game.suplentes.filter(user => user !== sender);
 
-    const formatTime = (date) => date.toLocaleTimeString('es', { hour12: true, hour: '2-digit', minute: '2-digit' });
-
-    const horasEnPais = {
-        MX: '',
-        CO: '',
-        CL: '',
-        AR: '',
-        PE: '',
-        EC: ''
-    };
-
-    for (const key in diferenciasHorarias) {
-        const horaActual = new Date();
-        horaActual.setHours(hora);
-        horaActual.setMinutes(minutos);
-        horaActual.setSeconds(0);
-        horaActual.setMilliseconds(0);
-
-        const horaEnPais = new Date(horaActual.getTime() + (3600000 * (diferenciasHorarias[key] - diferenciaHoraria)));
-        horasEnPais[key] = formatTime(horaEnPais);
+    // Lógica para 6 cupos por escuadra
+    if (emoji === '❤️') {
+        if (game.e1.length < 6) {
+            game.e1.push(sender);
+        } else if (game.e2.length < 6) {
+            game.e2.push(sender);
+        } else if (game.suplentes.length < 2) {
+            game.suplentes.push(sender);
+        }
+    } else if (emoji === '💙') {
+        if (game.e2.length < 6) {
+            game.e2.push(sender);
+        } else if (game.e1.length < 6) {
+            game.e1.push(sender);
+        } else if (game.suplentes.length < 2) {
+            game.suplentes.push(sender);
+        }
+    } else if (emoji === '💛') {
+        if (game.suplentes.length < 2) {
+            game.suplentes.push(sender);
+        }
     }
 
-    const message = ` ╭──────>⋆☽⋆ 🌸 ⋆☾⋆<──────╮
+    const nuevoTexto = generarTexto(game.horasEnPais, game.e1, game.e2, game.suplentes, game.organizador);
+    const todasLasMenciones = [...new Set([game.organizador, ...game.e1, ...game.e2, ...game.suplentes])];
+
+    try {
+        await conn.sendMessage(game.chat, {
+            text: nuevoTexto,
+            edit: reaction.key,
+            mentions: todasLasMenciones
+        });
+    } catch (e) {
+        // Ignorar fallos de edición
+    }
+};
+
+function generarTexto(horasEnPais, e1, e2, suplentes, organizador) {
+    const slotE1 = (idx) => e1[idx] ? `@${e1[idx].split('@')[0]}` : '';
+    const slotE2 = (idx) => e2[idx] ? `@${e2[idx].split('@')[0]}` : '';
+    const slotS = (idx) => suplentes[idx] ? `@${suplentes[idx].split('@')[0]}` : '';
+
+    return ` ╭──────>⋆☽⋆ 🌸 ⋆☾⋆<──────╮
 ㅤ         •6  𝗩 𝗘 𝗥 𝗦 𝗨 𝗦  6•  
                  •INTERNA• 
 ╰──────>⋆☽⋆ 🌸 ⋆☾⋆<──────╯
 
 ╭──────>⋆☽⋆ 🌸 ⋆☾⋆<──────╮
 │⏱ 𝐇𝐎𝐑𝐀𝐑𝐈𝐎:
-│🇲🇽 𝐌𝐄𝐗𝐜𝐢𝐂𝐎 : ${horasEnPais.MX}
-│🇨🇴 𝐂𝐎𝐋𝐎𝗠𝐁𝗜𝐀 : ${horasEnPais.CO}
+│🇲🇽 𝐌𝐄𝐗𝐈𝐂𝐎 : ${horasEnPais.MX}
+│🇨🇴 𝐂𝐎𝐋𝐎𝗠𝐁𝗜𝗔 : ${horasEnPais.CO}
 │🇵🇪 𝐏𝐄𝗥𝐔 : ${horasEnPais.PE}
-│🇪🇨 𝐄𝗖𝗨𝗔𝐃𝗢𝗥 : ${horasEnPais.EC}
+│🇪🇨 𝐄𝗖𝗨𝗔𝐃◁𝐎𝐑 : ${horasEnPais.EC}
 │🇨🇱 𝐂𝐇𝐈𝐋𝐄 : ${horasEnPais.CL}
-│🇦🇷 𝐀𝗥𝗚𝗘𝗡𝗧𝗜𝗡𝐀 : ${horasEnPais.AR}
+│🇦🇷 𝐀𝗥𝗚𝗘𝗡𝗧𝐈𝗡𝐀 : ${horasEnPais.AR}
 │
-│ㅤʚ 𝗝𝗨𝗚𝗔𝗗𝗢𝗥𝗔𝗦: 
+│ㅤʚ 𝗝𝗨𝗚𝗔𝗗𝗢𝗥𝗔𝗦: (${e1.length + e2.length}/12)
 │
-│     𝗘𝗦𝗖𝗨𝗔𝐃𝗥𝐀 1
+│     𝗘𝗦𝗖𝗨𝗔𝐃𝗥𝐀 1 (${e1.length}/6)
+│👑 ➤ ${slotE1(0)}
+│🌸 ➤ ${slotE1(1)}
+│🌸 ➤ ${slotE1(2)}
+│🌸 ➤ ${slotE1(3)}
+│🌸 ➤ ${slotE1(4)}
+│🌸 ➤ ${slotE1(5)}
 │
-│👑 ➤   
-│🌸 ➤   
-│🌸 ➤   
-│🌸 ➤
-│🌸 ➤   
-│🌸 ➤
+│     𝗘𝗦𝗖𝗨𝗔𝐃𝗥𝐀 2 (${e2.length}/6)
+│👑 ➤ ${slotE2(0)}
+│🌸 ➤ ${slotE2(1)}
+│🌸 ➤ ${slotE2(2)}
+│🌸 ➤ ${slotE2(3)}
+│🌸 ➤ ${slotE2(4)}
+│🌸 ➤ ${slotE2(5)}
 │
-│     𝗘𝗦𝗖𝗨𝗔𝐃𝗥𝐀 2
+│ㅤʚ 𝗦𝗨𝗣𝗟𝗘𝗡𝗧𝗔𝗦: (${suplentes.length}/2)
+│🌷 ➤ ${slotS(0)}
+│🌷 ➤ ${slotS(1)}
 │
-│👑 ➤
-│🌸 ➤
-│🌸 ➤
-│🌸 ➤
-│🌸 ➤   
-│🌸 ➤
-│
-│ㅤʚ 𝗦𝗨𝗣𝗟𝗘𝗡𝗧𝗔𝗦:
-│🌷 ➤   
-│🌷 ➤    
-│
-│ㅤʚ 𝗗𝗢𝗡𝗔𝗗𝗢𝗥𝗔 𝗗𝗘 𝗦𝗔𝗟𝗔:
-│💕 ➤   
+│📌 *Reacciones:*
+│❤️ = Escuadra 1 | 💙 = Escuadra 2 | 💛 = Suplente | ❌ = Salir
 │
 │ㅤʚ 𝗢𝗥𝗚𝗔𝗡𝗜𝗭𝗔𝗗𝗢𝗥𝗔:
-│@${m.sender.split('@')[0]}
-╰──────>⋆☽⋆ 🌸 ⋆☾⋆<──────╯
-`.trim();
-    
-    const mentionedJid = [m.sender]; // Lista de personas a mencionar
-    conn.sendMessage(m.chat, { text: message, mentions: mentionedJid }, { quoted: m });
-};
-handler.help = ['interna6fem']
-handler.tags = ['freefire']
-handler.command = /^(interna6vs6fem|interna6fem|interna6x6fem|6internafem|invs6fem|in6vs6fem|in6v6fem)$/i
+│@${organizador.split('@')[0]}
+╰──────>⋆☽⋆ 🌸 ⋆☾⋆<──────╯`.trim();
+}
+
+handler.help = ['interna6fem'];
+handler.tags = ['freefire'];
+handler.command = /^(interna6vs6fem|interna6fem|interna6x6fem|6internafem|invs6fem|in6vs6fem|in6v6fem)$/i;
+
 export default handler;
