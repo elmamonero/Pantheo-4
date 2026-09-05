@@ -3,7 +3,7 @@ global.versus6v6 = global.versus6v6 || {};
 
 const handler = async (m, { conn, args }) => {
     if (args.length < 3) {
-        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM, país (MX, CO, CL, AR, PE, EC) y opcionalmente la casilla.\nEjemplo: *.6vs6 08:00 PM MX C4*', m);
+        conn.reply(m.chat, 'Debes proporcionar la hora (HH:MM), AM/PM, país (MX, CO, CL, AR, PE, EC) y opcionalmente la casilla.\nEjemplo: *.6vs6 08:00 PM CO C4*', m);
         return;
     }
 
@@ -37,10 +37,12 @@ const handler = async (m, { conn, args }) => {
         return;
     }
 
+    // Convertir a hora formato 24h
     let [hora, minutos] = horaUsuario.split(':').map(Number);
     if (ampm === 'PM' && hora !== 12) hora += 12;
     if (ampm === 'AM' && hora === 12) hora = 0;
 
+    // Calcular fecha exacta en la zona del país origen especificado
     const now = new Date();
     const tzOrigen = timezones[pais];
     
@@ -51,20 +53,30 @@ const handler = async (m, { conn, args }) => {
     const parts = formatterOrigen.formatToParts(now);
     const dateMap = Object.fromEntries(parts.map(p => [p.type, p.value]));
 
-    const fechaRef = new Date(`${dateMap.year}-${dateMap.month}-${dateMap.day}T${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`);
+    const isoString = `${dateMap.year}-${dateMap.month}-${dateMap.day}T${String(hora).padStart(2, '0')}:${String(minutos).padStart(2, '0')}:00`;
 
+    // Conversión a las zonas horarias restantes
     const horasEnPais = {};
     for (const key in timezones) {
+        const dateTarget = new Date(new Date(isoString).toLocaleString('en-US', { timeZone: tzOrigen }));
+        const dateLocal = new Date(isoString);
+        const diff = dateLocal.getTime() - dateTarget.getTime();
+        
+        const finalDate = new Date(dateLocal.getTime() + diff);
+
         const fmt = new Intl.DateTimeFormat('es-ES', {
             timeZone: timezones[key],
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
         });
-        horasEnPais[key] = fmt.format(fechaRef).toUpperCase();
+        horasEnPais[key] = fmt.format(finalDate).toUpperCase();
     }
 
-    const textoBase = generarTexto(horasEnPais, casilla, [], [], m.sender);
+    const titulares = [];
+    const suplentes = [];
+
+    const textoBase = generarTexto(horasEnPais, casilla, titulares, suplentes, m.sender);
 
     const sentMsg = await conn.sendMessage(m.chat, { text: textoBase, mentions: [m.sender] }, { quoted: m });
 
@@ -73,8 +85,8 @@ const handler = async (m, { conn, args }) => {
         horasEnPais,
         casilla,
         organizador: m.sender,
-        titulares: [],
-        suplentes: [],
+        titulares,
+        suplentes,
         timestamp: Date.now()
     };
 };
@@ -90,14 +102,13 @@ handler.before = async function (m, { conn }) {
     if (!global.versus6v6 || !global.versus6v6[msgId]) return;
 
     const game = global.versus6v6[msgId];
-    const diecisieteMinutos = 17 * 60 * 1000;
-    const tiempoTranscurrido = Date.now() - game.timestamp;
-
-    if (tiempoTranscurrido > diecisieteMinutos) {
+    const tiempoLimite = 20 * 60 * 1000;
+    if (Date.now() - game.timestamp > tiempoLimite) {
         delete global.versus6v6[msgId];
         return;
     }
 
+    // Quitar usuario antes de reasignarlo
     game.titulares = game.titulares.filter(user => user !== sender);
     game.suplentes = game.suplentes.filter(user => user !== sender);
 
@@ -123,7 +134,7 @@ handler.before = async function (m, { conn }) {
             mentions: todasLasMenciones
         });
     } catch (e) {
-        // Ignorar si falla la edición
+        // Ignorar errores de edición
     }
 };
 
