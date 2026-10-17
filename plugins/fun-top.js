@@ -1,84 +1,71 @@
-// --- FUNCIONES Y DATOS ---
 function shuffleArray(array) {
     return array.sort(() => Math.random() - 0.5);
 }
 
+// Configuración fija para las categorías predeterminadas
 const categorias = {
-    migajeros: {
-        titulo: "👑 TOP 10 MIGAJEROS 🍞",
-        emoji: "🍞",
-        barra: "🥖",
-        frase: "Mendigando un poquito de atención:"
-    },
-    infieles: {
-        titulo: "🔥 TOP 10 INFIELES 😈",
-        emoji: "🐍",
-        barra: "🔥",
-        frase: "Los más peligrosos del grupo:"
-    },
-    fieles: {
-        titulo: "💎 TOP 10 FIELES 😇",
-        emoji: "✨",
-        barra: "🛡️",
-        frase: "Patrimonio de la lealtad:"
-    },
-    cachudos: {
-        titulo: "🐂 TOP 10 CACHUDOS 🤘",
-        emoji: "🦌",
-        barra: "🌿",
-        frase: "Los que no entran por la puerta:"
-    }
+    migajeros: { titulo: "TOP 10 MIGAJEROS 🍞", emoji: "🥖" },
+    infieles: { titulo: "TOP 10 INFIELES 😈", emoji: "🔥" },
+    fieles: { titulo: "TOP 10 FIELES 😇", emoji: "🛡️" },
+    cachudos: { titulo: "TOP 10 CACHUDOS 🤘", emoji: "🌿" }
 };
 
-// --- LOGICA DEL COMANDO ---
 let handler = async (m, { conn, args, usedPrefix, command, groupMetadata }) => {
-    // Definimos el tipo según lo que el usuario pida (ej: .migajeros, .infieles, etc. o .top infieles)
-    let tipo = command.toLowerCase();
+    let cmd = command.toLowerCase();
+    let primerArg = args[0] ? args[0].toLowerCase() : '';
     
-    // Si usas un solo comando maestro tipo ".top [categoria]"
-    if (command === 'top') {
-        tipo = args[0] ? args[0].toLowerCase() : '';
-        if (!categorias[tipo]) {
-            let listaKeys = Object.keys(categorias).join(', ');
-            return m.reply(`❌ Debes especificar una categoría válida.\n📌 *Ejemplos:* \n> ${usedPrefix}top infieles\n> ${usedPrefix}top fieles\n\n*Categorías:* ${listaKeys}`);
-        }
+    let tituloTop = "";
+    let icono = "🔥";
+
+    // 1. Detectar si la categoría coincide con las predeterminadas
+    if (categorias[cmd]) {
+        // Si usaron directamente el comando (.infieles, .fieles, etc.)
+        tituloTop = categorias[cmd].titulo;
+        icono = categorias[cmd].emoji;
+    } else if (cmd === 'top' && categorias[primerArg]) {
+        // Si usaron ".top infieles", ".top fieles", etc.
+        tituloTop = categorias[primerArg].titulo;
+        icono = categorias[primerArg].emoji;
+    } else if (args.length > 0) {
+        // Si pusieron cualquier otro texto (.top los más guapos)
+        tituloTop = `TOP 10 ${args.join(" ").toUpperCase()}`;
+    } else {
+        // Si solo pusieron ".top"
+        tituloTop = "TOP 10 DEL GRUPO";
     }
 
-    const config = categorias[tipo];
-    if (!config) return;
-
-    // Obtener participantes y evitar repetir personas mezclando el array
+    // 2. Obtener miembros del grupo y mezclarlos para no repetir a nadie
     const participants = groupMetadata.participants.map(p => p.id);
     if (participants.length === 0) return m.reply("❌ No hay suficientes participantes en el grupo.");
 
     const mezclados = shuffleArray([...participants]);
-    const topSeleccionados = mezclados.slice(0, 10);
+    
+    // Asegurar que sean máximo 10 personas sin repetir
+    const top10 = mezclados.slice(0, 10);
 
-    // Construcción del diseño limpio
-    let texto = `╭───━━━━━───〔 ${config.titulo} 〕───━━━━━───╮\n│\n`;
-    texto += `│ 💬 *${config.frase}*\n│\n`;
+    // 3. Armar el diseño visual
+    let texto = `╭───━━━━━───〔 👑 ${tituloTop} 〕───━━━━━───╮\n│\n`;
 
     const menciones = [];
 
-    topSeleccionados.forEach((jid, index) => {
+    top10.forEach((jid, index) => {
         let num = index + 1;
         let medalla = num === 1 ? "🥇" : num === 2 ? "🥈" : num === 3 ? "🥉" : "🔹";
-        let porcentaje = Math.floor(Math.random() * 31) + 70;
+        let porcentaje = Math.floor(Math.random() * 31) + 70; // Porcentaje entre 70% y 100%
         
         menciones.push(jid);
         
-        // Sin r de canal (@s.whatsapp.net o @g.us limpio visualmente)
+        // Mención limpia (sin @s.whatsapp.net ni @g.us visualmente)
         texto += `│ ${medalla} *#${num}* ➔ @${jid.split('@')[0]}\n`;
-        texto += `│    └ Level: [${config.barra.repeat(3)}] ${porcentaje}%\n│\n`;
+        texto += `│    └ Level: [${icono.repeat(3)}] ${porcentaje}%\n│\n`;
     });
 
-    texto += `╰───━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━───╯\n`;
-    texto += `> 📌 *Nota:* Resultados generados aleatoriamente.`;
+    texto += `╰───━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━───╯`;
 
-    // Enviar mensaje con menciones
+    // 4. Enviar respuesta con menciones
     await conn.sendMessage(m.chat, { text: texto, mentions: menciones }, { quoted: m });
 };
 
-// --- HANDLER AL FINAL (Estructura original) ---
+// Mantiene el handler.command al final como en tu archivo original
 handler.command = ['top', 'migajeros', 'infieles', 'fieles', 'cachudos'];
 export default handler;
