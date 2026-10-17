@@ -4,10 +4,10 @@ function shuffleArray(array) {
 
 // Categorías predeterminadas
 const categorias = {
-    migajeros: { titulo: "TOP 10 MIGAJEROS 🍞", emoji: "🥖" },
-    infieles: { titulo: "TOP 10 INFIELES 😈", emoji: "🔥" },
-    fieles: { titulo: "TOP 10 FIELES 😇", emoji: "🛡️" },
-    cachudos: { titulo: "TOP 10 CACHUDOS 🤘", emoji: "🌿" }
+    migajeros: { titulo: "MIGAJEROS 🍞", emoji: "🥖" },
+    infieles: { titulo: "INFIELES 😈", emoji: "🔥" },
+    fieles: { titulo: "FIELES 😇", emoji: "🛡️" },
+    cachudos: { titulo: "CACHUDOS 🤘", emoji: "🌿" }
 };
 
 let handler = async (m, { conn, args, usedPrefix, command, groupMetadata }) => {
@@ -18,12 +18,12 @@ let handler = async (m, { conn, args, usedPrefix, command, groupMetadata }) => {
     let tituloTop = "";
     let icono = "🔥";
 
-    // 1. Validar el caso de usar solo .top sin texto
+    // 1. Validar si solo ponen ".top" sin texto
     if (cmd === 'top' && !textoArg) {
         return m.reply(`⚠️ *Debes ingresar un tema para el Top.*\n\n📌 *Ejemplo:* \n> ${usedPrefix}top los más guapos\n> ${usedPrefix}top infieles`);
     }
 
-    // 2. Detectar si coincide con las categorías fijas o es texto personalizado
+    // 2. Detectar si es categoría fija o texto libre
     if (categorias[cmd]) {
         tituloTop = categorias[cmd].titulo;
         icono = categorias[cmd].emoji;
@@ -31,21 +31,20 @@ let handler = async (m, { conn, args, usedPrefix, command, groupMetadata }) => {
         tituloTop = categorias[primerArg].titulo;
         icono = categorias[primerArg].emoji;
     } else {
-        // Texto dinámico personalizado (.top cualquier cosa)
-        tituloTop = `TOP 10 ${textoArg.toUpperCase()}`;
+        tituloTop = `${textoArg.toUpperCase()}`;
     }
 
-    // 3. Obtener miembros del grupo sin repetir
+    // 3. Obtener participantes del grupo
     const participants = groupMetadata.participants.map(p => p.id);
     if (participants.length === 0) return m.reply("❌ No hay suficientes participantes en el grupo.");
 
     const mezclados = shuffleArray([...participants]);
     const top10 = mezclados.slice(0, 10);
+    const totalMostrados = top10.length;
 
-    // 4. Armar el diseño bien alineado usando comillas triples (```) para monospace
-    let texto = ````┌──────────────────────────────┐\n`;
-    texto += `│   👑  ${tituloTop}\n`;
-    texto += `├──────────────────────────────┤\n`;
+    // 4. Diseñar el mensaje dinámico (se adapta bonito sin importar cuántos hayan)
+    let texto = `👑 *TOP ${totalMostrados} ${tituloTop}*\n`;
+    texto += `───────────────\n\n`;
 
     const menciones = [];
 
@@ -57,11 +56,11 @@ let handler = async (m, { conn, args, usedPrefix, command, groupMetadata }) => {
         menciones.push(jid);
         
         let tag = `@${jid.split('@')[0]}`;
-        texto += `│ ${medalla} #${num}${tag}\n`;
-        texto += `│    └ [${icono.repeat(3)}]${porcentaje}%\n`;
+        texto += `${medalla} *#${num}* • ${tag}\n`;
+        texto += `┗ Nivel: [${icono.repeat(3)}] ${porcentaje}%\n\n`;
     });
 
-    texto += `└──────────────────────────────┘```;
+    texto += `───────────────`;
 
     // 5. Enviar mensaje con tags
     await conn.sendMessage(m.chat, { text: texto, mentions: menciones }, { quoted: m });
