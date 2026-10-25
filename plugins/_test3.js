@@ -160,6 +160,7 @@ async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
   const endpoint =
     `${api.url}${encodeURIComponent(youtubeUrl)}${key}`;
 
+  // 20 segundos para recibir respuesta de la API
   const response = await fetchWithTimeout(
     endpoint,
     {
@@ -168,7 +169,7 @@ async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
         Accept: 'application/json'
       }
     },
-    7000
+    20000
   );
 
   if (!response.ok) {
@@ -182,6 +183,7 @@ async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
     throw new Error('No devolvió enlace de descarga.');
   }
 
+  // 20 segundos para descargar el archivo de audio desde el CDN
   const audioResponse = await fetchWithTimeout(
     audioUrl,
     {
@@ -191,7 +193,7 @@ async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
         Referer: 'https://savetube.vip/'
       }
     },
-    120_000
+    20000
   );
 
   if (!audioResponse.ok) {
@@ -239,22 +241,21 @@ async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
 }
 
 async function getAudioFromApis(youtubeUrl, tempDir) {
-  console.log('[YT-PLAY] Iniciando carrera entre APIs...');
+  console.log('[YT-PLAY] Iniciando carrera simultánea de 20s entre todas las APIs...');
 
   const promises = APIS.map((api, index) =>
     downloadSingleApi(api, index, youtubeUrl, tempDir).catch(error => {
-      console.warn(`[YT-PLAY] ${api.name} perdió la carrera:`, error.message);
+      console.warn(`[YT-PLAY] ${api.name} falló en la carrera:`, error.message);
       throw error;
     })
   );
 
   try {
-    // Promise.any resuelve tan pronto como la primera API termine con éxito
     const result = await Promise.any(promises);
     console.log(`[YT-PLAY] ¡Ganó la carrera ${result.apiName}!`);
     return result;
   } catch (aggregateError) {
-    throw new Error('Ninguna fuente devolvió audio válido en la carrera.');
+    throw new Error('Ninguna fuente pudo completar la descarga y conversión a tiempo.');
   }
 }
 
@@ -354,7 +355,7 @@ const handler = async (m, { conn, args }) => {
   }
 };
 
-handler.help = ['play <nombre|URL>'];
+handler.help = ['pruebasa2 <nombre|URL>'];
 handler.command = ['pruebasa2'];
 handler.tags = ['descargas'];
 
