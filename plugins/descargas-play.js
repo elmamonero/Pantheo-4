@@ -2,12 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
-// CONFIGURACIÓN: Espera rápida de 3.5 segundos por API antes de pasar a la otra
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-const API_TIMEOUT = 7000; 
+const API_TIMEOUT = 4000; 
 
-// Función para formatear duración
 function formatDuration(duration) {
   if (!duration) return '00:00';
   if (typeof duration === 'string' && duration.includes(':')) return duration;
@@ -22,6 +20,14 @@ function formatDuration(duration) {
 
 const APIS = [
   { 
+    name: 'Delirius-Download', 
+    url: `https://api.delirius.online/download/ytmp3?url=`,
+    getAudioUrl: (data) => data?.data?.download || data?.result?.download || data?.data?.url,
+    getTitle: (data) => data?.data?.title || data?.result?.title,
+    getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
+    getDuration: (data) => data?.data?.duration || data?.result?.duration
+  },
+  { 
     name: 'Stellar-v2-Yuki', 
     url: `https://api.stellarwa.xyz/dl/ytmp3?url=`,
     params: 'stellarwa-2026.xyz@maia@20-12-2025',
@@ -29,14 +35,6 @@ const APIS = [
     getTitle: (data) => data?.result?.title || data?.data?.title,
     getThumb: (data) => data?.result?.thumbnail || data?.data?.thumbnail,
     getDuration: (data) => data?.result?.duration || data?.data?.duration
-  },
-  { 
-    name: 'Delirius-Download', 
-    url: `https://api.delirius.online/download/ytmp3?url=`,
-    getAudioUrl: (data) => data?.data?.download || data?.result?.download || data?.data?.url,
-    getTitle: (data) => data?.data?.title || data?.result?.title,
-    getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
-    getDuration: (data) => data?.data?.duration || data?.result?.duration
   },
   { 
     name: 'Yuki', 
@@ -150,38 +148,39 @@ const handler = async (m, { conn, args }) => {
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
                     `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
                     `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
-                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡ot`;
+                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝚗 𝖡ot`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
 
-    // CORRECCIÓN: Añadir User-Agent y cabeceras para descarga correcta
     const audioResponse = await fetch(audioUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8',
+        'Origin': 'https://savetube.me',
+        'Referer': 'https://savetube.me/'
       }
     });
 
-    if (!audioResponse.ok) throw new Error('Error al descargar el archivo de audio desde la URL.');
-
-    // Verificar el tipo de contenido para evitar guardar HTML o JSON corrupto
-    const contentType = audioResponse.headers.get('content-type') || '';
-    if (contentType.includes('text/html') || contentType.includes('application/json')) {
-      throw new Error('La API devolvió un enlace web o un error en lugar de un archivo de audio.');
-    }
+    if (!audioResponse.ok) throw new Error(`Error al descargar el archivo de audio (HTTP ${audioResponse.status}).`);
 
     const arrayBuffer = await audioResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     
-    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
+    if (buffer.byteLength > MAX_SIZE_BYTES) {
       throw new Error(`El archivo es demasiado pesado.`);
     }
     
-    // Validar que el archivo no esté vacío o demasiado pequeño (indica fallo)
-    if (arrayBuffer.byteLength < 5000) {
-      throw new Error('El archivo de audio descargado está corrupto o vacío.');
+    if (buffer.byteLength < 5000) {
+      throw new Error('El archivo de audio descargado está vacío o corrupto.');
     }
 
-    fs.writeFileSync(dest, Buffer.from(arrayBuffer));
+    // NUEVO: Verificar si el CDN devolvió código HTML/Cloudflare en lugar de audio
+    const textSnippet = buffer.toString('utf8', 0, 150).toLowerCase();
+    if (textSnippet.includes('<!doctype') || textSnippet.includes('<html') || textSnippet.includes('cloudflare')) {
+      throw new Error('El servidor CDN bloqueó la descarga y envió una página web en vez de audio.');
+    }
+
+    fs.writeFileSync(dest, buffer);
 
     if (thumbnail) {
       await conn.sendMessage(m.chat, { image: { url: thumbnail }, caption }, { quoted: m });
