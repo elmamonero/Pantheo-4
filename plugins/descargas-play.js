@@ -16,51 +16,53 @@ const APIS = [
     url: 'https://api.delirius.online/download/ytmp3?url=',
     getAudioUrl: data =>
       data?.data?.download ||
+      data?.download ||
       data?.result?.download ||
       data?.data?.url,
     getTitle: data =>
-      data?.data?.title || data?.result?.title,
+      data?.data?.title || data?.title || data?.result?.title,
     getThumb: data =>
       data?.data?.image ||
       data?.data?.thumbnail ||
+      data?.thumbnail ||
       data?.result?.thumb,
     getDuration: data =>
-      data?.data?.duration || data?.result?.duration
+      data?.data?.duration || data?.duration || data?.result?.duration
   },
   {
     name: 'Stellar-v2-Yuki',
     url: 'https://api.stellarwa.xyz/dl/ytmp3?url=',
     params: 'stellarwa-2026.xyz@maia@20-12-2025',
     getAudioUrl: data =>
-      data?.result?.dl || data?.data?.download,
+      data?.result?.dl || data?.data?.download || data?.download,
     getTitle: data =>
-      data?.result?.title || data?.data?.title,
+      data?.result?.title || data?.data?.title || data?.title,
     getThumb: data =>
-      data?.result?.thumbnail || data?.data?.thumbnail,
+      data?.result?.thumbnail || data?.data?.thumbnail || data?.thumbnail,
     getDuration: data =>
-      data?.result?.duration || data?.data?.duration
+      data?.result?.duration || data?.data?.duration || data?.duration
   },
   {
     name: 'Yuki',
     url: 'https://api.yuki-wabot.my.id/dl/youtubeplay?query=',
     params: 'YukiBot-MD',
     getAudioUrl: data =>
-      data?.result?.dl || data?.data?.download,
+      data?.result?.dl || data?.data?.download || data?.download,
     getTitle: data =>
-      data?.result?.title || data?.data?.title,
+      data?.result?.title || data?.data?.title || data?.title,
     getThumb: data =>
-      data?.result?.thumbnail || data?.data?.thumbnail,
+      data?.result?.thumbnail || data?.data?.thumbnail || data?.thumbnail,
     getDuration: data =>
-      data?.result?.duration || data?.data?.duration
+      data?.result?.duration || data?.data?.duration || data?.duration
   },
   {
     name: 'FAA-ytplay',
     url: 'https://api-faa.my.id/faa/ytplay?query=',
-    getAudioUrl: data => data?.result?.mp3,
-    getTitle: data => data?.result?.title,
+    getAudioUrl: data => data?.result?.mp3 || data?.mpz || data?.download,
+    getTitle: data => data?.result?.title || data?.title,
     getThumb: data =>
-      data?.result?.thumbnail || data?.result?.thumb,
-    getDuration: data => data?.result?.duration
+      data?.result?.thumbnail || data?.result?.thumb || data?.thumbnail,
+    getDuration: data => data?.result?.duration || data?.duration
   }
 ];
 
@@ -147,112 +149,114 @@ async function convertAudio(inputPath, outputPath) {
   }
 }
 
-async function getAudioFromApis(youtubeUrl, tempDir) {
-  let lastError = null;
+async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
+  const inputPath = path.join(tempDir, `orig-${index}.bin`);
+  const outputPath = path.join(tempDir, `audio-${index}.ogg`);
 
-  for (const [index, api] of APIS.entries()) {
-    const inputPath = path.join(tempDir, `orig-${index}.bin`);
-    const outputPath = path.join(tempDir, `audio-${index}.ogg`);
+  const key = api.params
+    ? `&key=${encodeURIComponent(api.params)}`
+    : '';
 
-    console.log(`[YT-PLAY] Probando ${api.name}...`);
+  const endpoint =
+    `${api.url}${encodeURIComponent(youtubeUrl)}${key}`;
 
-    try {
-      const key = api.params
-        ? `&key=${encodeURIComponent(api.params)}`
-        : '';
-
-      const endpoint =
-        `${api.url}${encodeURIComponent(youtubeUrl)}${key}`;
-
-      const response = await fetchWithTimeout(
-        endpoint,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0',
-            Accept: 'application/json'
-          }
-        },
-        7000
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}.`);
+  // 20 segundos para recibir respuesta de la API
+  const response = await fetchWithTimeout(
+    endpoint,
+    {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        Accept: 'application/json'
       }
+    },
+    20000
+  );
 
-      const data = await response.json();
-      const audioUrl = api.getAudioUrl(data);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}.`);
+  }
 
-      if (!audioUrl) {
-        throw new Error('No devolvió enlace de descarga.');
+  const data = await response.json();
+  const audioUrl = api.getAudioUrl(data);
+
+  if (!audioUrl) {
+    throw new Error('No devolvió enlace de descarga.');
+  }
+
+  // 20 segundos para descargar el archivo de audio desde el CDN
+  const audioResponse = await fetchWithTimeout(
+    audioUrl,
+    {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        Accept: '*/*',
+        Referer: 'https://savetube.vip/'
       }
+    },
+    20000
+  );
 
-      console.log('[YT-PLAY] Enlace recibido:', audioUrl);
+  if (!audioResponse.ok) {
+    throw new Error(`CDN HTTP ${audioResponse.status}.`);
+  }
 
-      const audioResponse = await fetchWithTimeout(
-        audioUrl,
-        {
-          headers: {
-            'User-Agent': 'Mozilla/5.0',
-            Accept: '*/*',
-            Referer: 'https://www.youtube.com/'
-          }
-        },
-        120_000
-      );
+  const declaredSize = Number(
+    audioResponse.headers.get('content-length')
+  );
 
-      if (!audioResponse.ok) {
-        throw new Error(`CDN HTTP ${audioResponse.status}.`);
-      }
+  if (declaredSize > MAX_SIZE_BYTES) {
+    throw new Error(`Supera ${MAX_SIZE_MB} MB.`);
+  }
 
-      const declaredSize = Number(
-        audioResponse.headers.get('content-length')
-      );
+  const file = await fs.promises.open(inputPath, 'w');
+  let downloaded = 0;
 
-      if (declaredSize > MAX_SIZE_BYTES) {
+  try {
+    for await (const chunk of audioResponse.body) {
+      downloaded += chunk.length;
+
+      if (downloaded > MAX_SIZE_BYTES) {
         throw new Error(`Supera ${MAX_SIZE_MB} MB.`);
       }
 
-      const file = await fs.promises.open(inputPath, 'w');
-      let downloaded = 0;
-
-      try {
-        for await (const chunk of audioResponse.body) {
-          downloaded += chunk.length;
-
-          if (downloaded > MAX_SIZE_BYTES) {
-            throw new Error(`Supera ${MAX_SIZE_MB} MB.`);
-          }
-
-          await file.writeFile(chunk);
-        }
-      } finally {
-        await file.close();
-      }
-
-      if (downloaded === 0) {
-        throw new Error('Descarga vacía.');
-      }
-
-      await convertAudio(inputPath, outputPath);
-
-      console.log(`[YT-PLAY] Listo con ${api.name}.`);
-
-      return {
-        apiName: api.name,
-        filePath: outputPath,
-        title: api.getTitle(data),
-        thumbnail: api.getThumb(data),
-        duration: formatDuration(api.getDuration(data))
-      };
-    } catch (error) {
-      lastError = error;
-      console.warn(`[YT-PLAY] Falló ${api.name}:`, error.message);
+      await file.writeFile(chunk);
     }
+  } finally {
+    await file.close();
   }
 
-  throw new Error(
-    lastError?.message || 'Ninguna fuente devolvió audio válido.'
+  if (downloaded === 0) {
+    throw new Error('Descarga vacía.');
+  }
+
+  await convertAudio(inputPath, outputPath);
+
+  return {
+    apiName: api.name,
+    filePath: outputPath,
+    title: api.getTitle(data),
+    thumbnail: api.getThumb(data),
+    duration: formatDuration(api.getDuration(data))
+  };
+}
+
+async function getAudioFromApis(youtubeUrl, tempDir) {
+  console.log('[YT-PLAY] Iniciando carrera simultánea de 20s entre todas las APIs...');
+
+  const promises = APIS.map((api, index) =>
+    downloadSingleApi(api, index, youtubeUrl, tempDir).catch(error => {
+      console.warn(`[YT-PLAY] ${api.name} falló en la carrera:`, error.message);
+      throw error;
+    })
   );
+
+  try {
+    const result = await Promise.any(promises);
+    console.log(`[YT-PLAY] ¡Ganó la carrera ${result.apiName}!`);
+    return result;
+  } catch (aggregateError) {
+    throw new Error('Ninguna fuente pudo completar la descarga y conversión a tiempo.');
+  }
 }
 
 const handler = async (m, { conn, args }) => {
