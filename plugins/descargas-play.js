@@ -2,10 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import yts from 'yt-search';
 
+// CONFIGURACIÓN: Timeout optimizado a 4 segundos para mayor velocidad
 const MAX_SIZE_MB = 250;
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 const API_TIMEOUT = 4000; 
 
+// Función para formatear duración
 function formatDuration(duration) {
   if (!duration) return '00:00';
   if (typeof duration === 'string' && duration.includes(':')) return duration;
@@ -18,6 +20,7 @@ function formatDuration(duration) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+// ORDEN OPTIMIZADO: Delirius primero por rapidez y efectividad
 const APIS = [
   { 
     name: 'Delirius-Download', 
@@ -143,15 +146,17 @@ const handler = async (m, { conn, args }) => {
     const channel = searchData?.author?.name || 'Canal de YouTube';
     const audioUrl = apiResult.url;
     
+    // Formato visual de Pantheon
     const caption = `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
                     `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
                     `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
-                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝚗 𝖡ot`;
+                    `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡ot`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
 
+    // CORRECCIÓN CLAVE: Cabeceras específicas para aceptar el CDN de SaveTube sin bloqueo HTML
     const audioResponse = await fetch(audioUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -174,9 +179,9 @@ const handler = async (m, { conn, args }) => {
       throw new Error('El archivo de audio descargado está vacío o corrupto.');
     }
 
-    // NUEVO: Verificar si el CDN devolvió código HTML/Cloudflare en lugar de audio
+    // PROTECCIÓN CONTRA HTML: Detecta si el CDN envió una página de error/Cloudflare en vez de música
     const textSnippet = buffer.toString('utf8', 0, 150).toLowerCase();
-    if (textSnippet.includes('<!doctype') || textSnippet.includes('<html') || textSnippet.includes('cloudflare')) {
+    if (textSnippet.includes('<!doctype') || textSnippet.includes('<html') || textSnippet.includes('cloudflare') || textSnippet.includes('error')) {
       throw new Error('El servidor CDN bloqueó la descarga y envió una página web en vez de audio.');
     }
 
