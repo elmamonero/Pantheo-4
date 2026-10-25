@@ -147,7 +147,7 @@ m.react("❌️")
 } finally {
 delete userRequests[m.sender]; 
 }}
-handler.help = ['play', 'play2', 'play3', 'play4', 'playdoc'];
+handler.help = ['play', 'play2', 'play3', 'play4', 'pruebasa'];
 handler.tags = ['downloader'];
 handler.command = ['pruebasa'];
 handler.register = true;
