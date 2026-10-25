@@ -149,9 +149,8 @@ delete userRequests[m.sender];
 }}
 handler.help = ['play', 'play2', 'play3', 'play4', 'pruebasa'];
 handler.tags = ['downloader'];
-handler.command = ['pruebasa'];
+handler.command = ['pruebasa', 'play', 'play2', 'play3', 'play4', 'musica', 'video', 'playdoc', 'playdoc2'];
 handler.register = true;
-export default handler;
 
 async function search(query, options = {}) {
 const search = await yts.search({query, hl: 'es', gl: 'ES', ...options});
