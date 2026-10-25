@@ -33,7 +33,6 @@ const APIS = [
   { 
     name: 'Delirius-Download', 
     url: `https://api.delirius.online/download/ytmp3?url=`,
-    // ARREGLADO: Ahora extrae correctamente data?.data?.download que es donde viene tu link de savetube
     getAudioUrl: (data) => data?.data?.download || data?.result?.download || data?.data?.url,
     getTitle: (data) => data?.data?.title || data?.result?.title,
     getThumb: (data) => data?.data?.image || data?.data?.thumbnail || data?.result?.thumb,
@@ -67,7 +66,6 @@ async function getAudioFromApis(url) {
 
     try {
       const encodedUrl = encodeURIComponent(url);
-      
       const apiKeyParam = api.params ? `&key=${api.params}` : '';
       const apiUrl = `${api.url}${encodedUrl}${apiKeyParam}`;
       
@@ -147,7 +145,6 @@ const handler = async (m, { conn, args }) => {
     const channel = searchData?.author?.name || 'Canal de YouTube';
     const audioUrl = apiResult.url;
     
-    // Formato visual de Pantheon
     const caption = `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
                     `◈ *${title}*\n\n` +
                     `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
@@ -156,12 +153,33 @@ const handler = async (m, { conn, args }) => {
                     `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡ot`;
 
     const dest = path.join('/tmp', `${Date.now()}_audio.mp3`);
-    const audioResponse = await fetch(audioUrl);
 
-    if (!audioResponse.ok) throw new Error('Error de descarga.');
+    // CORRECCIÓN: Añadir User-Agent y cabeceras para descarga correcta
+    const audioResponse = await fetch(audioUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'audio/mpeg,audio/*;q=0.9,*/*;q=0.8'
+      }
+    });
+
+    if (!audioResponse.ok) throw new Error('Error al descargar el archivo de audio desde la URL.');
+
+    // Verificar el tipo de contenido para evitar guardar HTML o JSON corrupto
+    const contentType = audioResponse.headers.get('content-type') || '';
+    if (contentType.includes('text/html') || contentType.includes('application/json')) {
+      throw new Error('La API devolvió un enlace web o un error en lugar de un archivo de audio.');
+    }
 
     const arrayBuffer = await audioResponse.arrayBuffer();
-    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) throw new Error(`El archivo es demasiado pesado.`);
+    
+    if (arrayBuffer.byteLength > MAX_SIZE_BYTES) {
+      throw new Error(`El archivo es demasiado pesado.`);
+    }
+    
+    // Validar que el archivo no esté vacío o demasiado pequeño (indica fallo)
+    if (arrayBuffer.byteLength < 5000) {
+      throw new Error('El archivo de audio descargado está corrupto o vacío.');
+    }
 
     fs.writeFileSync(dest, Buffer.from(arrayBuffer));
 
