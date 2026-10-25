@@ -48,10 +48,10 @@ sourceUrl: "skyultraplus.com"
 }}}, { quoted: m })
 userCaptions.set(m.sender, PlayText);
 
-const [input, qualityInput = command === 'play' || command === 'musica' || command === 'play3' ? '320' : '720'] = text.split(' ');
+const [input, qualityInput = command === 'pruebasa' || command === 'musica' || command === 'play3' ? '320' : '720'] = text.split(' ');
 const audioQualities = ['64', '96', '128', '192', '256', '320'];
 const videoQualities = ['240', '360', '480', '720', '1080'];
-const isAudioCommand = command === 'play' || command === 'musica' || command === 'play3';
+const isAudioCommand = command === 'pruebasa' || command === 'musica' || command === 'play3';
 const selectedQuality = (isAudioCommand ? audioQualities : videoQualities).includes(qualityInput) ? qualityInput : (isAudioCommand ? '320' : '720');
 const isAudio = command.toLowerCase().includes('mp3') || command.toLowerCase().includes('audio')
 const format = isAudio ? 'mp3' : '720' 
