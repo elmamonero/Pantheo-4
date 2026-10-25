@@ -3,10 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import fetch from 'node-fetch';
 import yts from 'yt-search';
-import { savetube } from '../lib/yt-savetube.js';
-import { ogmp3 } from '../lib/youtubedl.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -15,132 +12,57 @@ const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const APIS = [
   {
-    name: 'Savetube',
-    type: 'lib',
-    get: async youtubeUrl => {
-      const data = await savetube.download(youtubeUrl, 'mp3');
-      return {
-        audioUrl: data?.result?.download,
-        title: data?.result?.title,
-        thumbnail: data?.result?.thumbnail || data?.result?.image,
-        duration: data?.result?.duration
-      };
-    }
+    name: 'Delirius-Download',
+    url: 'https://api.delirius.online/download/ytmp3?url=',
+    getAudioUrl: data =>
+      data?.data?.download ||
+      data?.download ||
+      data?.result?.download ||
+      data?.data?.url,
+    getTitle: data =>
+      data?.data?.title || data?.title || data?.result?.title,
+    getThumb: data =>
+      data?.data?.image ||
+      data?.data?.thumbnail ||
+      data?.thumbnail ||
+      data?.result?.thumb,
+    getDuration: data =>
+      data?.data?.duration || data?.duration || data?.result?.duration
   },
   {
-    name: 'OGMP3',
-    type: 'lib',
-    get: async youtubeUrl => {
-      const data = await ogmp3.download(youtubeUrl, '320', 'audio');
-      return {
-        audioUrl: data?.result?.download,
-        title: data?.result?.title,
-        thumbnail: data?.result?.thumbnail || data?.result?.image,
-        duration: data?.result?.duration
-      };
-    }
+    name: 'Stellar-v2-Yuki',
+    url: 'https://api.stellarwa.xyz/dl/ytmp3?url=',
+    params: 'stellarwa-2026.xyz@maia@20-12-2025',
+    getAudioUrl: data =>
+      data?.result?.dl || data?.data?.download || data?.download,
+    getTitle: data =>
+      data?.result?.title || data?.data?.title || data?.title,
+    getThumb: data =>
+      data?.result?.thumbnail || data?.data?.thumbnail || data?.thumbnail,
+    getDuration: data =>
+      data?.result?.duration || data?.data?.duration || data?.duration
   },
   {
-    name: 'Mitzuki-Audio',
-    type: 'fetch',
-    url: 'https://api.mitzuki.xyz/download/youtube?url=',
-    params: `&type=audio&format=mp3&apikey=${process.env.API_KEY}`,
-    get: data => ({
-      audioUrl: data?.data?.media?.dl_download,
-      title: data?.data?.title,
-      thumbnail: data?.data?.thumbnail || data?.data?.image,
-      duration: data?.data?.duration
-    })
+    name: 'Yuki',
+    url: 'https://api.yuki-wabot.my.id/dl/youtubeplay?query=',
+    params: 'YukiBot-MD',
+    getAudioUrl: data =>
+      data?.result?.dl || data?.data?.download || data?.download,
+    getTitle: data =>
+      data?.result?.title || data?.data?.title || data?.title,
+    getThumb: data =>
+      data?.result?.thumbnail || data?.data?.thumbnail || data?.thumbnail,
+    getDuration: data =>
+      data?.result?.duration || data?.data?.duration || data?.duration
   },
   {
-    name: 'Mitzuki-YouTube2',
-    type: 'fetch',
-    url: 'https://api.mitzuki.xyz/download/youtube2?url=',
-    params: `&apikey=${process.env.API_KEY}`,
-    get: data => ({
-      audioUrl: data?.data?.audio?.url,
-      title: data?.data?.title,
-      thumbnail: data?.data?.thumbnail || data?.data?.image,
-      duration: data?.data?.duration
-    })
-  },
-  {
-    name: 'DV-YER',
-    type: 'fetch',
-    url: 'https://dv-yer-api.online/ytmp3?mode=link&url=',
-    get: data => ({
-      audioUrl:
-        data?.download_url_full ||
-        data?.stream_url_full ||
-        (data?.url ? `https://dv-yer-api.online${data.url}` : null),
-      title: data?.title,
-      thumbnail: data?.thumbnail || data?.image,
-      duration: data?.duration
-    })
-  },
-  {
-    name: 'Dorratz',
-    type: 'fetch',
-    url: 'https://api.dorratz.com/v3/ytdl?url=',
-    get: data => {
-      const mp3 = data?.medias?.find(
-        media =>
-          media?.extension === 'mp3' &&
-          ['160kbps', '128kbps', '96kbps'].includes(media?.quality)
-      );
-
-      return {
-        audioUrl: mp3?.url,
-        title: data?.title,
-        thumbnail: data?.thumbnail || data?.image,
-        duration: data?.duration
-      };
-    }
-  },
-  {
-    name: 'Siputzx',
-    type: 'fetch',
-    url: 'https://api.siputzx.my.id/api/d/ytmp3?url=',
-    get: data => ({
-      audioUrl: data?.dl || data?.data?.dl || data?.result?.dl,
-      title: data?.title || data?.data?.title,
-      thumbnail: data?.thumbnail || data?.data?.thumbnail,
-      duration: data?.duration || data?.data?.duration
-    })
-  },
-  {
-    name: 'API-Propia',
-    type: 'fetch',
-    url: `${process.env.API_BASE || ''}/download/ytmp3?url=`,
-    get: data => ({
-      audioUrl: data?.status ? data?.data?.download?.url : null,
-      title: data?.data?.title,
-      thumbnail: data?.data?.thumbnail || data?.data?.image,
-      duration: data?.data?.duration
-    })
-  },
-  {
-    name: 'Zenkey',
-    type: 'fetch',
-    url: 'https://api.zenkey.my.id/api/download/ytmp3?apikey=zenkey&url=',
-    get: data => ({
-      audioUrl: data?.result?.download?.url,
-      title: data?.result?.title,
-      thumbnail: data?.result?.thumbnail || data?.result?.image,
-      duration: data?.result?.duration
-    })
-  },
-  {
-    name: 'Exonity',
-    type: 'fetch',
-    url: 'https://exonity.tech/api/dl/playmp3?query=',
-    queryBased: true,
-    get: data => ({
-      audioUrl: data?.result?.download,
-      title: data?.result?.title,
-      thumbnail: data?.result?.thumbnail || data?.result?.image,
-      duration: data?.result?.duration
-    })
+    name: 'FAA-ytplay',
+    url: 'https://api-faa.my.id/faa/ytplay?query=',
+    getAudioUrl: data => data?.result?.mp3 || data?.mpz || data?.download,
+    getTitle: data => data?.result?.title || data?.title,
+    getThumb: data =>
+      data?.result?.thumbnail || data?.result?.thumb || data?.thumbnail,
+    getDuration: data => data?.result?.duration || data?.duration
   }
 ];
 
@@ -189,15 +111,12 @@ function getYouTubeUrl(value) {
   }
 }
 
-async function fetchWithTimeout(url, options = {}, milliseconds = 10000) {
+async function fetchWithTimeout(url, options, milliseconds) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), milliseconds);
 
   try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal
-    });
+    return await fetch(url, { ...options, signal: controller.signal });
   } finally {
     clearTimeout(timeout);
   }
@@ -220,10 +139,7 @@ async function convertAudio(inputPath, outputPath) {
       '-avoid_negative_ts', 'make_zero',
       outputPath
     ],
-    {
-      timeout: 180_000,
-      maxBuffer: 1024 * 1024
-    }
+    { timeout: 180_000, maxBuffer: 1024 * 1024 }
   );
 
   const stats = await fs.promises.stat(outputPath);
@@ -233,61 +149,46 @@ async function convertAudio(inputPath, outputPath) {
   }
 }
 
-async function getApiData(api, youtubeUrl, title) {
-  if (api.type === 'lib') {
-    return api.get(youtubeUrl);
-  }
+async function downloadSingleApi(api, index, youtubeUrl, tempDir) {
+  const inputPath = path.join(tempDir, `orig-${index}.bin`);
+  const outputPath = path.join(tempDir, `audio-${index}.ogg`);
 
-  const endpoint = api.queryBased
-    ? `${api.url}${encodeURIComponent(title || youtubeUrl)}`
-    : `${api.url}${encodeURIComponent(youtubeUrl)}${api.params || ''}`;
+  const key = api.params
+    ? `&key=${encodeURIComponent(api.params)}`
+    : '';
+
+  const endpoint =
+    `${api.url}${encodeURIComponent(youtubeUrl)}${key}`;
 
   const response = await fetchWithTimeout(
     endpoint,
     {
       headers: {
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         Accept: 'application/json'
       }
     },
-    8000
+    7000
   );
 
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}.`);
   }
 
-  const contentType = response.headers.get('content-type') || '';
-
-  if (!contentType.includes('json')) {
-    throw new Error(`Respuesta no JSON: ${contentType}`);
-  }
-
   const data = await response.json();
-  return api.get(data);
-}
+  const audioUrl = api.getAudioUrl(data);
 
-async function tryApi(api, youtubeUrl, title, tempDir, index) {
-  const inputPath = path.join(tempDir, `orig-${index}.bin`);
-  const outputPath = path.join(tempDir, `audio-${index}.ogg`);
-
-  console.log(`[PRUEBASA2] Iniciando ${api.name}...`);
-
-  const info = await getApiData(api, youtubeUrl, title);
-
-  if (!info?.audioUrl) {
+  if (!audioUrl) {
     throw new Error('No devolvió enlace de descarga.');
   }
 
-  console.log(`[PRUEBASA2] ${api.name} devolvió enlace.`);
-
   const audioResponse = await fetchWithTimeout(
-    info.audioUrl,
+    audioUrl,
     {
       headers: {
-        'User-Agent': 'Mozilla/5.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         Accept: '*/*',
-        Referer: 'https://www.youtube.com/'
+        Referer: 'https://savetube.vip/'
       }
     },
     120_000
@@ -298,7 +199,7 @@ async function tryApi(api, youtubeUrl, title, tempDir, index) {
   }
 
   const declaredSize = Number(
-    audioResponse.headers.get('content-length') || 0
+    audioResponse.headers.get('content-length')
   );
 
   if (declaredSize > MAX_SIZE_BYTES) {
@@ -328,45 +229,33 @@ async function tryApi(api, youtubeUrl, title, tempDir, index) {
 
   await convertAudio(inputPath, outputPath);
 
-  console.log(`[PRUEBASA2] Listo con ${api.name}.`);
-
   return {
     apiName: api.name,
     filePath: outputPath,
-    title: info.title,
-    thumbnail: info.thumbnail,
-    duration: formatDuration(info.duration)
+    title: api.getTitle(data),
+    thumbnail: api.getThumb(data),
+    duration: formatDuration(api.getDuration(data))
   };
 }
 
-async function getAudioFromApis(youtubeUrl, title, tempDir) {
-  const attempts = APIS.map((api, index) =>
-    tryApi(api, youtubeUrl, title, tempDir, index)
-      .then(result => ({
-        ok: true,
-        result
-      }))
-      .catch(error => {
-        console.warn(
-          `[PRUEBASA2] Falló ${api.name}:`,
-          error.message
-        );
+async function getAudioFromApis(youtubeUrl, tempDir) {
+  console.log('[YT-PLAY] Iniciando carrera entre APIs...');
 
-        return {
-          ok: false,
-          error
-        };
-      })
+  const promises = APIS.map((api, index) =>
+    downloadSingleApi(api, index, youtubeUrl, tempDir).catch(error => {
+      console.warn(`[YT-PLAY] ${api.name} perdió la carrera:`, error.message);
+      throw error;
+    })
   );
 
-  const results = await Promise.all(attempts);
-  const winner = results.find(item => item.ok);
-
-  if (!winner) {
-    throw new Error('Ninguna API devolvió audio válido.');
+  try {
+    // Promise.any resuelve tan pronto como la primera API termine con éxito
+    const result = await Promise.any(promises);
+    console.log(`[YT-PLAY] ¡Ganó la carrera ${result.apiName}!`);
+    return result;
+  } catch (aggregateError) {
+    throw new Error('Ninguna fuente devolvió audio válido en la carrera.');
   }
-
-  return winner.result;
 }
 
 const handler = async (m, { conn, args }) => {
@@ -374,7 +263,7 @@ const handler = async (m, { conn, args }) => {
 
   if (!query) {
     return m.reply(
-      '¿Qué canción buscamos? Ingresa el nombre o un enlace de YouTube.\n\nEjemplo:\n.pruebasa2 emilia 420'
+      '¿Qué canción buscamos hoy? Ingresa el nombre o el enlace.'
     );
   }
 
@@ -399,53 +288,35 @@ const handler = async (m, { conn, args }) => {
       url = searchData.url;
     }
 
-    const searchTitle =
-      searchData?.title || query;
-
     tempDir = await fs.promises.mkdtemp(
-      path.join(os.tmpdir(), 'pruebasa2-')
+      path.join(os.tmpdir(), 'play-')
     );
 
-    const result = await getAudioFromApis(
-      url,
-      searchTitle,
-      tempDir
-    );
+    const result = await getAudioFromApis(url, tempDir);
 
-    const title =
-      result.title ||
-      searchData?.title ||
-      'Audio';
-
-    const thumbnail =
-      result.thumbnail ||
+    const title = result.title || searchData?.title || 'Audio';
+    const thumbnail = result.thumbnail ||
       searchData?.thumbnail ||
       searchData?.image;
 
-    const duration =
-      result.duration !== '00:00'
-        ? result.duration
-        : searchData?.timestamp || '00:00';
+    const duration = result.duration !== '00:00'
+      ? result.duration
+      : searchData?.timestamp || '00:00';
 
-    const channel =
-      searchData?.author?.name || 'Canal de YouTube';
+    const channel = searchData?.author?.name || 'Canal de YouTube';
 
     const caption =
       `───「 *𝖸𝗈𝗎𝖳𝗎𝖻𝖾 𝖬𝗎𝗌𝗂𝖼* 」───\n\n` +
       `◈ *${title}*\n\n` +
       `↳ ✨ *𝖣𝗎𝗋𝖺𝖼𝗂𝗈́𝗇:* ${duration}\n` +
       `↳ 👤 *𝖢𝖺𝗇𝖺𝗅:* ${channel}\n` +
-      `↳ ⚙️ *𝖠𝖯𝖨:* ${result.apiName}\n` +
       `↳ 🔗 *𝖤𝗇𝗅𝖺𝖼𝖾:* ${url}\n\n` +
       `⚡ 𝖯𝖺𝗇𝗍𝗁𝖾𝗈𝗇 𝖡ot`;
 
     if (thumbnail) {
       await conn.sendMessage(
         m.chat,
-        {
-          image: { url: thumbnail },
-          caption
-        },
+        { image: { url: thumbnail }, caption },
         { quoted: m }
       ).catch(() => m.reply(caption));
     } else {
@@ -470,12 +341,9 @@ const handler = async (m, { conn, args }) => {
 
     await m.react('✅').catch(() => {});
   } catch (error) {
-    console.error('[PRUEBASA2] Error:', error);
-
+    console.error('[YT-PLAY] Error:', error);
     await m.react('❌').catch(() => {});
-    await m.reply(
-      `⚠️ Aviso: ${error.message || 'Falló la descarga del audio.'}`
-    );
+    await m.reply(`⚠️ Aviso: ${error.message || 'Falló el audio.'}`);
   } finally {
     if (tempDir) {
       await fs.promises.rm(tempDir, {
@@ -486,9 +354,8 @@ const handler = async (m, { conn, args }) => {
   }
 };
 
-handler.help = ['pruebasa2 <nombre|URL>'];
+handler.help = ['play <nombre|URL>'];
 handler.command = ['pruebasa2'];
 handler.tags = ['descargas'];
-handler.register = true;
 
 export default handler;
