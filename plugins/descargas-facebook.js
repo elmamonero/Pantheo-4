@@ -1,66 +1,48 @@
-import fetch from 'node-fetch';
+import { igdl } from 'ruhend-scraper';
 
-const handler = async (m, { conn, args, usedPrefix, command }) => {
+const handler = async (m, { text, conn, args, usedPrefix, command }) => {
   if (!args[0]) {
-    return conn.reply(m.chat, '*[ 🔗 ] Ingresa el enlace de Facebook (Video o Reel).*\n\n*[ 💡 ] Ejemplo:* .fb https://www.facebook.com/share/v/17G62zi96v/', m);
+    return conn.reply(m.chat, '*[ 🔗 ] Ingresa el link del video de Facebook.*\n\n*[ 💡 ] Ejemplo:* .fb https://www.facebook.com/reel/858448809516815/?mibextid=9drbnH&s=yWDuG2&fs=e', fkontak, m);
   }
 
-  if (!args[0].includes('facebook.com') && !args[0].includes('fb.watch') && !args[0].includes('fb.me')) {
-    return conn.reply(m.chat, '*[ ❌ ] Por favor, ingresa un enlace válido de Facebook.*', m);
-  }
-
-  // 🚀 Filtro instantáneo: Si el enlace es de una foto o post estático (/share/p/ o /posts/), avisa de inmediato sin tardar
+  // 🚀 Filtro rápido: Si envías un link de foto o publicación estática (/share/p/ o /posts/), avisa al instante
   if (args[0].includes('/share/p/') || args[0].includes('/posts/')) {
     await m.react('⚠️');
-    return conn.reply(m.chat, '*[ ⚠️ ] El enlace corresponde a una fotografía o publicación estática. Este comando es exclusivamente para descargar videos, reels y en vivos de Facebook.*', m);
+    return conn.reply(m.chat, '*[ ⚠️ ] El enlace corresponde a una fotografía o publicación estática. Este comando es exclusivamente para descargar videos, reels y en vivos de Facebook.*', fkontak, m);
   }
 
   await m.react('🕒');
-
-  let targetUrl = args[0];
-
+  let res;
   try {
-    // 1. Resolver enlace corto si es de tipo /share/v/ (video)
-    if (targetUrl.includes('/share/')) {
-      let response = await fetch(targetUrl, {
-        redirect: 'follow',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      });
-      targetUrl = response.url;
-    }
+    res = await igdl(args[0]);
+  } catch (error) {
+    return conn.reply(m.chat, '*[ ❌ ] Error al obtener el video, verifique que el enlace sea correcto*', m);
+  }
 
-    // 2. Intentar descargar mediante la API de videos
-    let api = await fetch(`https://api.delirius.online/download/facebook?url=${encodeURIComponent(targetUrl)}`);
-    let json = await api.json();
+  let result = res.data;
+  if (!result || result.length === 0) {
+    return conn.reply(m.chat, '*[ ⚠️ ] No se encontraron resultados.*', m);
+  }
 
-    // Si la API no retorna una lista de videos
-    if (!json.status || !json.list || json.list.length === 0) {
-      await m.react('⚠️');
-      return conn.reply(m.chat, '*[ ⚠️ ] No se encontraron resultados o el video es privado.*', m);
-    }
+  let data;
+  try {
+    data = result.find(i => i.resolution === "720p (HD)") || result.find(i => i.resolution === "360p (SD)");
+  } catch (error) {
+    return conn.reply(m.chat, '*[ ❌ ] Error al enviar el video de Facebook*', m);
+  }
 
-    let videoData = json.list.find(i => i.quality && i.quality.includes('HD')) || json.list[0];
-    let videoUrl = videoData ? videoData.url : null;
+  if (!data) {
+    return conn.reply(m.chat, '*[ ⚠️ ] No se encontró una resolución adecuada.*', m);
+  }
 
-    if (!videoUrl) {
-      await m.react('❌');
-      return conn.reply(m.chat, '*[ ❌ ] No se pudo extraer el enlace de descarga del video.*', m);
-    }
-
-    await m.react('✅');
-
-    await conn.sendMessage(m.chat, { 
-      video: { url: videoUrl }, 
-      caption: '> © ᥲ𝗊ᥙі 𝗍іᥱᥒᥱ sᥙ 𝎷іძᥱ᥆ ძᥱ 𝖿ᥲᥴᥱᑲ᥆᥆k', 
-      fileName: 'fb.mp4', 
-      mimetype: 'video/mp4' 
-    }, { quoted: m });
-
+  await m.react('✅');
+  let video = data.url;
+  
+  try {
+    await conn.sendMessage(m.chat, { video: { url: video }, caption: '> © ᥲ𝗊ᥙі 𝗍іᥱᥒᥱ sᥙ 𝎷іძᥱ᥆ ძᥱ 𝖿ᥲᥴᥱᑲ᥆᥆k', fileName: 'fb.mp4', mimetype: 'video/mp4' }, { quoted: fkontak });
   } catch (error) {
     await m.react('❌');
-    return conn.reply(m.chat, '*[ ❌ ] Ocurrió un error inesperado al procesar la solicitud.*', m);
+    return conn.reply(m.chat, '*[ ⚠️ ] La URL del vídeo está corrompida por lo cual no fue posible enviar el vídeo.*', m);
   }
 };
 
