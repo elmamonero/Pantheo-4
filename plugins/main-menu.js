@@ -18,21 +18,21 @@ const handler = async (m, { conn, usedPrefix, isPrems }) => {
 
     const taguser = `@${m.sender.split('@')[0]}`;
     const botname = 'Pantheon Bot';
-    const saludo = 'Bienvenido';
+    const saludo = 'Hola';
     const fkontak = { "key": { "participants": "0@s.whatsapp.net", "remoteJid": "status@broadcast", "fromMe": false, "id": "status@broadcast" }, "message": { "contactMessage": { "vcard": `BEGIN:VCARD\nVERSION:3.0\nN:;;; \nFN:${botname}\nEND:VCARD` } } };
 
-    const text = `
-︵᷼     ⿻ *PANTHEON* ࣪   ࣭  ࣪ *WA BOT* ࣭  🐈  ࣪   ࣭
-✿ *Hᴏʟᴀ* *${taguser}*\n*${saludo}*
+    const text = `╭━━━〔 *${botname}* 〕━━━⬣
+┃ 👋 *${saludo}*, ${taguser}
+┃ 👑 Creador: wa.me/50587489794
+╰━━━━━━━━━━━━━━⬣
 
-> ꒰꛱ ͜Desarrollado por *Pantheon* +50587489794
+╭━━━〔 *ESTADÍSTICAS* 〕━━━⬣
+┃ ⏱️ Activo: ${uptime}
+┃ 👥 Usuarios: ${totalreg}
+┃ 🚀 Versión: 1.0.0
+╰━━━━━━━━━━━━━━⬣
 
-𓏸🌺  \`Bot Name:\` ${botname}  
-𓈒𓏸🌷 \`Activo:\` ${uptime}  
-𓈒𓏸🍂 \`Usuarios:\` ${totalreg}  
-𓈒𓏸🌸 \`Versión:\` 1.0.0  
-
-> 😸 Si encuentras un comando con errores no dudes en reportarlo con el Creador
+> ⚠️ Si encuentras algún error, repórtalo con el Creador.
 ${readMore}
 ↷✦; *\`MENÚS\`* ❞ 🌷︵᷼ 
 ⠞🌷੭‎ ${usedPrefix}menunsfw
@@ -142,7 +142,7 @@ ${readMore}
 ⠞🛠️੭‎ ${usedPrefix}eliminarfotochannel
 ⠞🛠️੭‎ ${usedPrefix}reactioneschannel
 ⠞🛠️੭‎ ${usedPrefix}reaccioneschannel
-⠞🛠️੭‎ ${usedPrefix}nuevonombrecanal
+⠞🛠️੭‎ ${usedPrefix}nuevonombrechannel
 ⠞🛠️੭‎ ${usedPrefix}nuevadescchannel
 
 ↷✦; \`GROUPS\` ❞ 🌿︵᷼ 
