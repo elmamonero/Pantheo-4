@@ -1,44 +1,47 @@
-import { facebookDl } from '../lib/scraper.js';
+import fetch from 'node-fetch';
 
-const handler = async (m, { text, conn, args, usedPrefix, command }) => {
+const handler = async (m, { conn, args, usedPrefix, command }) => {
   if (!args[0]) {
-    return conn.reply(m.chat, '*[ 🔗 ] Ingresa el link del video de Facebook.*\n\n*[ 💡 ] Ejemplo:* .fb https://www.facebook.com/share/p/1CVkcpykFJ/', fkontak, m);
+    return conn.reply(m.chat, '*[ 🔗 ] Ingresa el link del video de Facebook.*\n\n*[ 💡 ] Ejemplo:* .fb https://www.facebook.com/share/v/17G62zi96v/', m);
   }
 
-  // Validar si el enlace es de Facebook
+  // Validar que sea un enlace de Facebook
   if (!args[0].includes('facebook.com') && !args[0].includes('fb.watch')) {
     return conn.reply(m.chat, '*[ ❌ ] Por favor, ingresa un enlace válido de Facebook.*', m);
   }
 
   await m.react('🕒');
-  let res;
+
   try {
-    res = await facebookDl(args[0]);
-  } catch (error) {
-    await m.react('❌');
-    return conn.reply(m.chat, '*[ ❌ ] Error al obtener el video, verifique que el enlace sea correcto*', m);
-  }
+    let api = await fetch(`https://api.delirius.online/download/facebook?url=${encodeURIComponent(args[0])}`);
+    let json = await api.json();
 
-  // Extraer la mejor calidad disponible del objeto que retorna tu función facebookDl
-  let videoUrl = res['720p'] || res['360p'] || Object.values(res)[0];
+    if (!json.status || !json.list || json.list.length === 0) {
+      await m.react('❌');
+      return conn.reply(m.chat, '*[ ⚠️ ] No se encontraron resultados o el video es privado.*', m);
+    }
 
-  if (!videoUrl) {
-    await m.react('⚠️');
-    return conn.reply(m.chat, '*[ ⚠️ ] No se encontraron resultados o el video es privado.*', m);
-  }
+    // Buscamos la mejor calidad (HD o la primera disponible en la lista)
+    let videoData = json.list.find(i => i.quality && i.quality.includes('HD')) || json.list[0];
+    let videoUrl = videoData ? videoData.url : null;
 
-  await m.react('✅');
-  
-  try {
+    if (!videoUrl) {
+      await m.react('❌');
+      return conn.reply(m.chat, '*[ ❌ ] No se pudo extraer el enlace de descarga del video.*', m);
+    }
+
+    await m.react('✅');
+
     await conn.sendMessage(m.chat, { 
       video: { url: videoUrl }, 
-      caption: '> © ᥲ𝗊ᥙі 𝗍іᥱᥒᥱ sᥙ ᥎іძᥱ᥆ ძᥱ 𝖿ᥲᥴᥱᑲ᥆᥆k', 
+      caption: '> © ᥲ𝗊ᥙі 𝗍іᥱᥒᥱ sᥙ 𝎷іძᥱ᥆ ძᥱ 𝖿ᥲᥴᥱᑲ᥆᥆k', 
       fileName: 'fb.mp4', 
       mimetype: 'video/mp4' 
-    }, { quoted: fkontak });
+    }, { quoted: m });
+
   } catch (error) {
     await m.react('❌');
-    return conn.reply(m.chat, '*[ ⚠️ ] La URL del vídeo está corrompida por lo cual no fue posible enviar el vídeo.*', m);
+    return conn.reply(m.chat, '*[ ❌ ] Ocurrió un error al procesar la solicitud.*', m);
   }
 };
 
