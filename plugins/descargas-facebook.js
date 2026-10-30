@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 
 const handler = async (m, { conn, args, usedPrefix, command }) => {
   if (!args[0]) {
-    return conn.reply(m.chat, '*[ 🔗 ] Ingresa el link de la publicación o video de Facebook.*\n\n*[ 💡 ] Ejemplo:* .fb https://www.facebook.com/share/p/1CVkcpykFJ/', m);
+    return conn.reply(m.chat, '*[ 🔗 ] Ingresa el link del video o publicación de Facebook.*\n\n*[ 💡 ] Ejemplo:* .fb https://www.facebook.com/share/p/1CVkcpykFJ/', m);
   }
 
   if (!args[0].includes('facebook.com') && !args[0].includes('fb.watch') && !args[0].includes('fb.me')) {
@@ -25,19 +25,14 @@ const handler = async (m, { conn, args, usedPrefix, command }) => {
       targetUrl = response.url;
     }
 
-    // Si el enlace resuelto es una publicación de foto (/p/), la API de video no funcionará
-    if (targetUrl.includes('/posts/') || targetUrl.includes('/photo')) {
-      await m.react('⚠️');
-      return conn.reply(m.chat, '*[ ⚠️ ] Este enlace es una publicación de foto/texto. Este comando es exclusivamente para descargar videos o reels de Facebook.*', m);
-    }
-
-    // Petición a la API para videos
+    // Petición a la API de videos de Delirius
     let api = await fetch(`https://api.delirius.online/download/facebook?url=${encodeURIComponent(targetUrl)}`);
     let json = await api.json();
 
+    // Si no hay lista de videos o la API falla, es muy probable que sea una foto o publicación de texto/imagen
     if (!json.status || !json.list || json.list.length === 0) {
-      await m.react('❌');
-      return conn.reply(m.chat, '*[ ⚠️ ] No se encontraron resultados. Asegúrate de que el video sea público.*', m);
+      await m.react('⚠️');
+      return conn.reply(m.chat, '*[ ⚠️ ] Este enlace parece ser una fotografía o una publicación sin video. Actualmente este comando solo procesa videos, reels o en vivos de Facebook.*', m);
     }
 
     let videoData = json.list.find(i => i.quality && i.quality.includes('HD')) || json.list[0];
