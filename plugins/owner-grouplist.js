@@ -5,7 +5,6 @@ const handler = async (msg, { conn }) => {
   const sender = msg.key.participant || msg.key.remoteJid;
   const senderNum = sender.replace(/[^0-9]/g, "");
   
-  // Verificación de dueño adaptada a las variables globales comunes
   const isOwner = global.owner?.some(([id]) => id === senderNum) || false;
 
   if (!isOwner) {
@@ -15,12 +14,10 @@ const handler = async (msg, { conn }) => {
     return;
   }
 
-  // ✅ Reacciona de una vez al comando
   await conn.sendMessage(chatId, {
     react: { text: "📄", key: msg.key }
   });
 
-  // 🌐 Estado del modoPrivado global
   let modoPrivadoGlobal = "❌";
   try {
     modoPrivadoGlobal = (await getConfig("global", "modoprivado")) == 1 ? "✅" : "❌";
@@ -81,5 +78,8 @@ ${stateLines}
   }, { quoted: msg });
 };
 
-handler.command = ["vergrupos"];
+handler.help = ['vergrupos'];
+handler.tags = ['owner'];
+handler.command = /^(vergrupos|listagrupos|gruposconfig)$/i;
+
 export default handler;
