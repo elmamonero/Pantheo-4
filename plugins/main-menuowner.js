@@ -19,7 +19,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     txt += `🔹 *${usedPrefix}banchat* / *${usedPrefix}unbanchat*\n`
     txt += `   └ 🚫 Bloquea o desbloquea el bot en un chat.\n\n`
     txt += `🔹 *${usedPrefix}autoadmin*\n`
-    txt += `   └ 🛡️ Otorga admin al bot en el grupo.\n\n`
+    txt += `   └ 🛡️ Otorga admin al owner en el grupo.\n\n`
     txt += `🔹 *${usedPrefix}blocklist*\n`
     txt += `   └ 📋 Administra la lista negra de usuarios.\n\n`
     txt += `🔹 *${usedPrefix}join* <enlace>\n`
