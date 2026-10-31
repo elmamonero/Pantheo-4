@@ -1,68 +1,74 @@
-let handler = async (m, { conn }) => {
-    let mssg = await m.reply('⏳ *Obteniendo y analizando la lista de grupos activos... Por favor espera.*');
-    
+import { getAllConfigs, getConfig } from '../../db.js';
+
+const handler = async (m, { conn }) => {
+    // 🌐 Estado del modoPrivado global (manejando posibles errores de DB)
+    let modoPrivadoGlobal = "❌";
     try {
-        const botJid = conn.decodeJid(conn.user.id);
-        
-        // Filtramos solo los chats que son grupos de WhatsApp
-        const groupList = Object.keys(conn.chats).filter(jid => jid.endsWith('@g.us'));
-        let txt = '';
-        let activeCount = 0;
+        modoPrivadoGlobal = (await getConfig("global", "modoprivado")) == 1 ? "✅" : "❌";
+    } catch {}
 
-        for (let jid of groupList) {
-            let groupMetadata = {};
+    let msgWait = await m.reply('⏳ *Obteniendo información y configuraciones de los grupos...*');
+
+    try {
+        // Obtenemos directamente solo los grupos activos donde el bot está dentro
+        const groups = await conn.groupFetchAllParticipating();
+        const configKeys = [
+            ["antis", "🚫 Antis"],
+            ["antidelete", "🗑️ Antidelete"],
+            ["modoprivado", "🔒 ModoPrivado"],
+            ["apagado", "🛑 Apagado"],
+            ["modoadmins", "👮‍♂️ Solo Admins"],
+            ["antiarabe", "🚷 AntiArabe"],
+            ["antilink", "🔗 AntiLink WA"],
+            ["linkall", "🌐 AntiLink All"],
+            ["welcome", "👋 Bienvenida"],
+            ["despedidas", "👋 Despedida"]
+        ];
+
+        const resultLines = [];
+
+        for (const [id, data] of Object.entries(groups)) {
+            const name = data.subject || "Sin nombre";
+            
+            // Obtenemos configuraciones individuales de cada grupo de forma segura
+            let config = {};
             try {
-                // Obtenemos los metadatos frescos del grupo
-                groupMetadata = await conn.groupMetadata(jid);
+                config = getAllConfigs(id) || {};
             } catch {
-                continue; // Si el grupo ya no existe o dio error, lo saltamos de inmediato
+                config = {};
             }
 
-            const participants = groupMetadata.participants || [];
-            
-            // Verificamos si el bot realmente sigue dentro del grupo
-            const isParticipant = participants.some(u => conn.decodeJid(u.id) === botJid);
-            if (!isParticipant) continue; // Si ya no estamos en este grupo, no lo mostramos
+            const stateLines = configKeys.map(([k, label]) => {
+                const active = config[k] == 1 ? "✅" : "❌";
+                return `${label.padEnd(16)}: ${active}`;
+            }).join("\n");
 
-            activeCount++;
-            
-            // Verificamos si el bot es admin
-            const botUser = participants.find(u => conn.decodeJid(u.id) === botJid) || {};
-            const isBotAdmin = botUser?.admin === 'admin' || botUser?.admin === 'superadmin' || Boolean(botUser?.admin);
+            let link = "🔒 No soy admin / Sin enlace";
+            try {
+                const code = await conn.groupInviteCode(id);
+                if (code) link = `https://chat.whatsapp.com/${code}`;
+            } catch {}
 
-            let inviteLink = '--- (No admin) ---';
-            if (isBotAdmin) {
-                try {
-                    let code = await conn.groupInviteCode(jid);
-                    inviteLink = code ? `https://chat.whatsapp.com/${code}` : '--- (Error) ---';
-                } catch {
-                    inviteLink = '--- (Sin permisos) ---';
-                }
-            }
-
-            txt += `*◉ Grupo ${activeCount}*\n`;
-            txt += `    *➤ Nombre:* ${groupMetadata.subject || 'Desconocido'}\n`;
-            txt += `    *➤ ID:* ${jid}\n`;
-            txt += `    *➤ Admin:* ${isBotAdmin ? '✔ Sí' : '❌ No'}\n`;
-            txt += `    *➤ Total Participantes:* ${participants.length}\n`;
-            txt += `    *➤ Link:* ${inviteLink}\n\n`;
+            resultLines.push(`╭───────────────\n📛 *${name}*\n🔗 *Enlace:* ${link}\n${stateLines}\n╰───────────────\n`);
         }
 
-        if (activeCount === 0) {
-            return conn.reply(m.chat, '❌ No se encontraron grupos activos donde el bot esté presente.', m);
-        }
+        const listado = resultLines.length
+            ? resultLines.join("\n")
+            : "❌ No se encontraron grupos activos.";
 
-        await conn.reply(m.chat, `*Lista de grupos activos del Bot* 🤖\n\n*—◉ Total de grupos reales:* ${activeCount}\n\n${txt}`.trim(), m);
+        const replyText = `🌐 *Modo Privado Global:* ${modoPrivadoGlobal}\n\n📋 *Listado de grupos y sus configuraciones:*\n\n${listado}`;
+
+        await conn.reply(m.chat, replyText, m);
         
     } catch (e) {
         console.error(e);
-        await conn.reply(m.chat, '❌ Ocurrió un error al obtener la lista de grupos.', m);
+        await conn.reply(m.chat, '❌ Ocurrió un error al obtener el listado de grupos.', m);
     }
 };
 
-handler.help = ['groups', 'grouplist'];
+handler.help = ['vergrupos'];
 handler.tags = ['owner'];
-handler.command = /^(groups|grouplist|listadegrupo|gruposlista|listagrupos|listgroup)$/i;
+handler.command = /^(vergrupos|gruposconfig|configrupos)$/i;
 handler.rowner = true;
 handler.private = true;
 
