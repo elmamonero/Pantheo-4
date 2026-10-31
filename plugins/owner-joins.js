@@ -33,7 +33,7 @@ m.reply(`*[ ✅ ] Pantheon se unió correctamente al grupo.*\n*¡Disfruta del Bo
 
 handler.help = ['join *<link> <días>*']
 handler.tags = ['owner']
-handler.command = ['test5']
+handler.command = ['join']
 handler.rowner = true
 
 export default handler
