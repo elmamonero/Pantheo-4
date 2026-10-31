@@ -33,7 +33,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     txt += `🔹 *${usedPrefix}grouplist*\n`
     txt += `   └ 📊 Muestra la lista de grupos activos.\n\n`
     txt += `🔹 *${usedPrefix}chetar*\n`
-    txt += `   └ 🚀 Ejecuta comandos de optimización.\n\n`
+    txt += `   └ 🚀 Para obtener recursos ilimitados.\n\n`
     txt += `╰━━━━━━━━━━━━━━━━━━━━━━⬣\n`
 
     txt += `> 📌 *Panel de control del bot.*`;
