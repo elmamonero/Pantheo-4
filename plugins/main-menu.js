@@ -39,6 +39,7 @@ ${readMore}
 ⠞🌷੭‎ ${usedPrefix}menuowner
 ⠞🌷੭‎ ${usedPrefix}menulogos
 ⠞🌷੭‎ ${usedPrefix}menuff
+⠞🌷੭‎ ${usedPrefix}menuventas
 
 ↷✦; \`INFO BOT\` ❞ 🍄︵᷼  
 ⠞🍄੭‎ ${usedPrefix}totalf
