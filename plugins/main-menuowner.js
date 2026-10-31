@@ -36,7 +36,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     txt += `   └ Ejecuta comandos de optimización.\n`
     txt += `└─────────────────────⬣\n\n`
 
-    txt += `> 📌 *Uso exclusivo para los creadores del bot.*`;
+    txt += `> 📌 *Panel de control del bot.*`;
 
     await conn.reply(m.chat, txt, m, { 
         contextInfo: { 
@@ -55,6 +55,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
 handler.help = ['menuowner', 'menucreador'];
 handler.tags = ['owner'];
-handler.command = /^(menuowner|menucreador)$/i;
+handler.command = ['menuowner', 'menucreador'];
+handler.rowner = true; 
 
-module.exports = handler;
+export default handler;
