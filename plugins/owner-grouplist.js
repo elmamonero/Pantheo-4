@@ -1,4 +1,4 @@
-import { getAllConfigs, getConfig } from '../../db.js';
+import { getAllConfigs, getConfig } from '../db.js';
 
 const handler = async (msg, { conn }) => {
   const chatId = msg.key.remoteJid;
