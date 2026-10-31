@@ -6,11 +6,19 @@ let handler = async (m, { conn }) => {
         const totalGroups = groups.length;
 
         for (let i = 0; i < groups.length; i++) {
-            const [jid, chat] = groups[i];
-            const groupMetadata = ((conn.chats[jid] || {}).metadata || (await conn.groupMetadata(jid).catch((_) => null))) || {};
+            const [jid] = groups[i];
+            
+            // Forzamos la obtención de metadatos reales y frescos del grupo
+            let groupMetadata = {};
+            try {
+                groupMetadata = await conn.groupMetadata(jid);
+            } catch {
+                groupMetadata = ((conn.chats[jid] || {}).metadata) || {};
+            }
+
             const participants = groupMetadata.participants || [];
             
-            // Normalizamos la búsqueda comparando JIDs limpios con decodeJid
+            // Buscamos al bot normalizando los JIDs (soluciona problemas de LID y sufijos de dispositivos)
             const bot = participants.find((u) => conn.decodeJid(u.id) === botJid) || {};
             const isBotAdmin = bot?.admin === 'admin' || bot?.admin === 'superadmin' || Boolean(bot?.admin);
             const isParticipant = participants.some((u) => conn.decodeJid(u.id) === botJid);
@@ -28,14 +36,14 @@ let handler = async (m, { conn }) => {
             }
 
             txt += `*◉ Grupo ${i + 1}*\n`;
-            txt += `    *➤ Nombre:* ${await conn.getName(jid)}\n`;
+            txt += `    *➤ Nombre:* ${groupMetadata.subject || await conn.getName(jid) || 'Desconocido'}\n`;
             txt += `    *➤ ID:* ${jid}\n`;
             txt += `    *➤ Admin:* ${isBotAdmin ? '✔ Sí' : '❌ No'}\n`;
             txt += `    *➤ Estado:* ${participantStatus}\n`;
             txt += `    *➤ Total de Participantes:* ${totalParticipants}\n`;
             txt += `    *➤ Link:* ${inviteLink}\n\n`;
         }
-        
+
         m.reply(`*Lista de grupos del Bot* 🤖\n\n*—◉ Total de grupos:* ${totalGroups}\n\n${txt}`.trim());
     } catch (e) {
         console.error(e);
