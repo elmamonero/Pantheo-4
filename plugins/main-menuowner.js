@@ -5,35 +5,38 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     txt += `╰━━━━━━━━━━━━━━━━━━━━━━⬣\n\n`
 
     // --- SECCIÓN 1: SISTEMA Y CONTROL ---
-    txt += `⚙️ *SISTEMA Y CONTROL*\n`
-    txt += `• ${usedPrefix}restart\n`
-    txt += `  └ Reinicia el bot por completo.\n`
-    txt += `• ${usedPrefix}update\n`
-    txt += `  └ Actualiza los archivos del bot.\n`
-    txt += `• ${usedPrefix}rev\n`
-    txt += `  └ Evalúa código JS rápidamente.\n\n`
+    txt += `⚙️ *SISTEMA Y CONTROL*\n\n`
+    txt += `🔹 *${usedPrefix}restart*\n`
+    txt += `   └ 🔄 Reinicia el bot por completo.\n\n`
+    txt += `🔹 *${usedPrefix}update*\n`
+    txt += `   └ 📥 Actualiza los archivos del bot.\n\n`
+    txt += `🔹 *${usedPrefix}rev*\n`
+    txt += `   └ 💻 Evalúa código JS rápidamente.\n\n`
+    txt += `────────────────────────\n\n`
 
     // --- SECCIÓN 2: MODERACIÓN Y GRUPOS ---
-    txt += `🛡️ *MODERACIÓN Y GRUPOS*\n`
-    txt += `• ${usedPrefix}banchat / ${usedPrefix}unbanchat\n`
-    txt += `  └ Bloquea o desbloquea el bot en un chat.\n`
-    txt += `• ${usedPrefix}autoadmin\n`
-    txt += `  └ Otorga admin al bot en el grupo.\n`
-    txt += `• ${usedPrefix}blocklist\n`
-    txt += `  └ Administra la lista negra de usuarios.\n`
-    txt += `• ${usedPrefix}join <enlace>\n`
-    txt += `  └ Obliga al bot a unirse a un grupo.\n`
-    txt += `• ${usedPrefix}salir\n`
-    txt += `  └ Hace que el bot abandone el grupo.\n\n`
+    txt += `🛡️ *MODERACIÓN Y GRUPOS*\n\n`
+    txt += `🔹 *${usedPrefix}banchat* / *${usedPrefix}unbanchat*\n`
+    txt += `   └ 🚫 Bloquea o desbloquea el bot en un chat.\n\n`
+    txt += `🔹 *${usedPrefix}autoadmin*\n`
+    txt += `   └ 🛡️ Otorga admin al bot en el grupo.\n\n`
+    txt += `🔹 *${usedPrefix}blocklist*\n`
+    txt += `   └ 📋 Administra la lista negra de usuarios.\n\n`
+    txt += `🔹 *${usedPrefix}join* <enlace>\n`
+    txt += `   └ 🔗 Obliga al bot a unirse a un grupo.\n\n`
+    txt += `🔹 *${usedPrefix}salir*\n`
+    txt += `   └ 🚪 Hace que el bot abandone el grupo.\n\n`
+    txt += `────────────────────────\n\n`
 
     // --- SECCIÓN 3: EXTRAS Y MONITOREO ---
-    txt += `⚡ *EXTRAS Y MONITOREO*\n`
-    txt += `• ${usedPrefix}grouplist\n`
-    txt += `  └ Muestra la lista de grupos activos.\n`
-    txt += `• ${usedPrefix}chetar\n`
-    txt += `  └ Ejecuta comandos de optimización.\n\n`
+    txt += `⚡ *EXTRAS Y MONITOREO*\n\n`
+    txt += `🔹 *${usedPrefix}grouplist*\n`
+    txt += `   └ 📊 Muestra la lista de grupos activos.\n\n`
+    txt += `🔹 *${usedPrefix}chetar*\n`
+    txt += `   └ 🚀 Ejecuta comandos de optimización.\n\n`
+    txt += `╰━━━━━━━━━━━━━━━━━━━━━━⬣\n`
 
-    txt += `> 📌 *Panel de control del bot.*`
+    txt += `> 📌 *Panel de control del bot.*`;
 
     await conn.reply(m.chat, txt, m, { 
         contextInfo: { 
@@ -53,6 +56,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 handler.help = ['menuowner', 'menucreador'];
 handler.tags = ['owner'];
 handler.command = ['menuowner', 'menucreador'];
-handler.rowner = false; // Cambiado a false para que no restrinja
+handler.rowner = false; 
 
 export default handler;
