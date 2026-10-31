@@ -56,6 +56,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 handler.help = ['menuowner', 'menucreador'];
 handler.tags = ['owner'];
 handler.command = /^(menuowner|menucreador)$/i;
-handler.rowner = true; // Solo para creadores
+handler.rowner = false; // Solo para creadores
 
 module.exports = handler;
