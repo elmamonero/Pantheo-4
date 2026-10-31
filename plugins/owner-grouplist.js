@@ -1,53 +1,62 @@
 let handler = async (m, { conn }) => {
-    let txt = '';
+    let mssg = await m.reply('⏳ *Obteniendo y analizando la lista de grupos activos... Por favor espera.*');
+    
     try {
         const botJid = conn.decodeJid(conn.user.id);
-        const groups = Object.entries(conn.chats).filter(([jid, chat]) => jid.endsWith('@g.us') && chat.isChats);
-        const totalGroups = groups.length;
+        
+        // Filtramos solo los chats que son grupos de WhatsApp
+        const groupList = Object.keys(conn.chats).filter(jid => jid.endsWith('@g.us'));
+        let txt = '';
+        let activeCount = 0;
 
-        for (let i = 0; i < groups.length; i++) {
-            const [jid] = groups[i];
-            
-            // Forzamos la obtención de metadatos reales y frescos del grupo
+        for (let jid of groupList) {
             let groupMetadata = {};
             try {
+                // Obtenemos los metadatos frescos del grupo
                 groupMetadata = await conn.groupMetadata(jid);
             } catch {
-                groupMetadata = ((conn.chats[jid] || {}).metadata) || {};
+                continue; // Si el grupo ya no existe o dio error, lo saltamos de inmediato
             }
 
             const participants = groupMetadata.participants || [];
             
-            // Buscamos al bot normalizando los JIDs (soluciona problemas de LID y sufijos de dispositivos)
-            const bot = participants.find((u) => conn.decodeJid(u.id) === botJid) || {};
-            const isBotAdmin = bot?.admin === 'admin' || bot?.admin === 'superadmin' || Boolean(bot?.admin);
-            const isParticipant = participants.some((u) => conn.decodeJid(u.id) === botJid);
-            const participantStatus = isParticipant ? '👤 Participante' : '❌ Ex participante';
-            const totalParticipants = participants.length;
+            // Verificamos si el bot realmente sigue dentro del grupo
+            const isParticipant = participants.some(u => conn.decodeJid(u.id) === botJid);
+            if (!isParticipant) continue; // Si ya no estamos en este grupo, no lo mostramos
+
+            activeCount++;
+            
+            // Verificamos si el bot es admin
+            const botUser = participants.find(u => conn.decodeJid(u.id) === botJid) || {};
+            const isBotAdmin = botUser?.admin === 'admin' || botUser?.admin === 'superadmin' || Boolean(botUser?.admin);
 
             let inviteLink = '--- (No admin) ---';
             if (isBotAdmin) {
                 try {
                     let code = await conn.groupInviteCode(jid);
-                    inviteLink = code ? `https://chat.whatsapp.com/${code}` : '--- (Error al obtener) ---';
+                    inviteLink = code ? `https://chat.whatsapp.com/${code}` : '--- (Error) ---';
                 } catch {
-                    inviteLink = '--- (Sin permisos / Error) ---';
+                    inviteLink = '--- (Sin permisos) ---';
                 }
             }
 
-            txt += `*◉ Grupo ${i + 1}*\n`;
-            txt += `    *➤ Nombre:* ${groupMetadata.subject || await conn.getName(jid) || 'Desconocido'}\n`;
+            txt += `*◉ Grupo ${activeCount}*\n`;
+            txt += `    *➤ Nombre:* ${groupMetadata.subject || 'Desconocido'}\n`;
             txt += `    *➤ ID:* ${jid}\n`;
             txt += `    *➤ Admin:* ${isBotAdmin ? '✔ Sí' : '❌ No'}\n`;
-            txt += `    *➤ Estado:* ${participantStatus}\n`;
-            txt += `    *➤ Total de Participantes:* ${totalParticipants}\n`;
+            txt += `    *➤ Total Participantes:* ${participants.length}\n`;
             txt += `    *➤ Link:* ${inviteLink}\n\n`;
         }
 
-        m.reply(`*Lista de grupos del Bot* 🤖\n\n*—◉ Total de grupos:* ${totalGroups}\n\n${txt}`.trim());
+        if (activeCount === 0) {
+            return conn.reply(m.chat, '❌ No se encontraron grupos activos donde el bot esté presente.', m);
+        }
+
+        await conn.reply(m.chat, `*Lista de grupos activos del Bot* 🤖\n\n*—◉ Total de grupos reales:* ${activeCount}\n\n${txt}`.trim(), m);
+        
     } catch (e) {
         console.error(e);
-        m.reply('❌ Ocurrió un error al obtener la lista de grupos.');
+        await conn.reply(m.chat, '❌ Ocurrió un error al obtener la lista de grupos.', m);
     }
 };
 
