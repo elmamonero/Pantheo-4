@@ -1,6 +1,10 @@
 let handler = async (m, { conn, usedPrefix, command }) => {
+    let userJid = m.sender;
+    let userNumber = userJid.replace(/[^0-9]/g, '');
+    let taguser = `@${userNumber}`;
+
     let txt = `╭━━━〔 👑 *PANEL DE CREADOR* 👑 〕━━━⬣\n`
-    txt += `┃ Hola, Propietario. Aquí tienes los\n`
+    txt += `┃ Hola, ${taguser}. Aquí tienes los\n`
     txt += `┃ comandos de control y moderación.\n`
     txt += `╰━━━━━━━━━━━━━━━━━━━━━━⬣\n\n`
 
@@ -18,6 +22,10 @@ let handler = async (m, { conn, usedPrefix, command }) => {
     txt += `🛡️ *MODERACIÓN Y GRUPOS*\n\n`
     txt += `🔹 *${usedPrefix}banchat* / *${usedPrefix}unbanchat*\n`
     txt += `   └ 🚫 Bloquea o desbloquea el bot en un chat.\n\n`
+    txt += `🔹 *${usedPrefix}banuser* *@tag*\n`
+    txt += `   └ 👤 Banea a un usuario del uso del bot.\n\n`
+    txt += `🔹 *${usedPrefix}unbanuser* *@tag*\n`
+    txt += `   └ 👤 Desbanea a un usuario del bot.\n\n`
     txt += `🔹 *${usedPrefix}autoadmin*\n`
     txt += `   └ 🛡️ Otorga admin al owner en el grupo.\n\n`
     txt += `🔹 *${usedPrefix}blocklist*\n`
@@ -40,7 +48,7 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     await conn.reply(m.chat, txt, m, { 
         contextInfo: { 
-            mentionedJid: [m.sender],
+            mentionedJid: [userJid],
             externalAdReply: {
                 title: '👑 M E N U • C R E A D O R 👑',
                 body: 'Panel de Control Avanzado',
@@ -56,6 +64,6 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 handler.help = ['menuowner', 'menucreador'];
 handler.tags = ['owner'];
 handler.command = ['menuowner', 'menucreador'];
-handler.rowner = false; 
+handler.rowner = true; 
 
 export default handler;
