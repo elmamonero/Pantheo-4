@@ -46,14 +46,19 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     txt += `> 📌 *Panel de control del bot.*`;
 
-    // Usamos una imagen directa adjunta para evitar pantallas negras
-    let imgUrl = 'https://qu.ax/XqWJ.jpg'; // Puedes cambiar este enlace por el que prefieras
-
-    await conn.sendMessage(m.chat, {
-        image: { url: imgUrl },
-        caption: txt,
-        mentions: [userJid] // Etiqueta correctamente al usuario en la descripción
-    }, { quoted: m });
+    await conn.reply(m.chat, txt, m, { 
+        contextInfo: { 
+            mentionedJid: [userJid],
+            externalAdReply: {
+                title: '👑 M E N U • C R E A D O R 👑',
+                body: 'Panel de Control Avanzado',
+                thumbnailUrl: 'https://evogb.win/Menu',
+                sourceUrl: '',
+                mediaType: 1,
+                renderLargerThumbnail: true
+            }
+        }
+    });
 }
 
 handler.help = ['menuowner', 'menucreador'];
