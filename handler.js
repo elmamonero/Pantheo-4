@@ -257,6 +257,11 @@ const isBotAdmin = !!bot?.admin || bot?.admin === 'admin'
         const isAdmin = isRAdmin || user?.admin == 'admin' || false
         const isBotAdmin = bot?.admin || false*/
 
+        // 🚫 BLOQUEO INSTANTÁNEO DE USUARIOS BANEADOS
+        if (_user && _user.banned && !isROwner && !m.fromMe) {
+            return;
+        }
+
         const ___dirname = path.join(path.dirname(fileURLToPath(import.meta.url)), './plugins')
         for (let name in global.plugins) {
             let plugin = global.plugins[name]
