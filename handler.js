@@ -555,7 +555,8 @@ botAdmin: '```🌙 𝙋𝙖𝙧𝙖 𝙥𝙤𝙙𝙚𝙧 𝙪𝙩𝙞𝙡𝙞�
 unreg: `\`\`\`🌙 𝙉𝙤 𝙩𝙚 𝙚𝙣𝙘𝙪𝙚𝙣𝙩𝙧𝙖𝙨 𝙧𝙚𝙜𝙞𝙨𝙩𝙧𝙖𝙙𝙤, 𝙧𝙚𝙜𝙞𝙨𝙩𝙧𝙖𝙩𝙚 𝙥𝙖𝙧𝙖 𝙪𝙩𝙞𝙡𝙞𝙯𝙖𝙧 𝙚𝙨𝙩𝙚 𝙛𝙪𝙣𝙘𝙞𝙤𝙣.\`\`\`\n\n*#reg <nombre.edad>*\n\n> *\`Ejemplo:\`*\n> .reg ${user2}.18`,
 restrict: '```🌙 𝙀𝙨𝙩𝙖 𝙛𝙪𝙣𝙘𝙞𝙤𝙣 𝙚𝙨𝙩𝙖 𝙙𝙚𝙨𝙖𝙘𝙩𝙞𝙫𝙖𝙙𝙖.```'
 }[type];
-if (msg) return conn.reply(m.chat, msg, m).then(_ => m.react('✖️'))
+if (msg) return conn.reply(m.chat, msg, m);
+}
 
 let file = global.__filename(import.meta.url, true)
 watchFile(file, async () => {
