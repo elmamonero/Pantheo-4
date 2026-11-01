@@ -46,19 +46,20 @@ let handler = async (m, { conn, usedPrefix, command }) => {
 
     txt += `> 📌 *Panel de control del bot.*`;
 
-    await conn.reply(m.chat, txt, m, { 
-        contextInfo: { 
+    await conn.sendMessage(m.chat, {
+        text: txt,
+        contextInfo: {
             mentionedJid: [userJid],
             externalAdReply: {
                 title: '👑 M E N U • C R E A D O R 👑',
                 body: 'Panel de Control Avanzado',
-                thumbnailUrl: 'https://qu.ax/XqWJ.jpg',
-                sourceUrl: '',
+                thumbnailUrl: 'https://cdn.jsdelivr.net/gh/DeepDigger0/resources@main/pantheon.jpg', // URL de respaldo estable
+                sourceUrl: 'https://github.com',
                 mediaType: 1,
                 renderLargerThumbnail: true
             }
         }
-    });
+    }, { quoted: m });
 }
 
 handler.help = ['menuowner', 'menucreador'];
