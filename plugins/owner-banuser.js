@@ -7,14 +7,8 @@ let handler = async (m, { conn, args }) => {
     } else if (args.length >= 1) {
         user = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
     } else {
-        await conn.reply(m.chat, `[ ℹ️ ] Etiqueta o responde al mensaje del usuario que quieras banear.`, m);
-        return;
+        return await conn.reply(m.chat, `[ ℹ️ ] Etiqueta o responde al mensaje del usuario que quieras banear.`, m);
     }
-
-    let userName = 'Usuario';
-    try {
-        userName = await conn.getName(user);
-    } catch {}
 
     if (!db[user]) {
         db[user] = {
@@ -22,7 +16,7 @@ let handler = async (m, { conn, args }) => {
             limit: 0,
             lastclaim: 0,
             registered: false,
-            name: userName,
+            name: 'Usuario',
             age: -1,
             regTime: -1,
             banned: false,
@@ -37,9 +31,9 @@ let handler = async (m, { conn, args }) => {
     db[user].banned = true;
     db[user].banRazon = args.slice(1).join(' ') || 'Sin razón especificada';
     
-    // Extraemos limpiamente solo los dígitos para que la etiqueta (@) funcione perfecta en WhatsApp
     let userNumber = user.split('@')[0];
     
+    // Envío directo sin consultas de metadata
     await conn.reply(m.chat, `*[ ✅️ ] El usuario @${userNumber} ha sido baneado del bot.*`, m, { mentionedJid: [user] });
 };
 
