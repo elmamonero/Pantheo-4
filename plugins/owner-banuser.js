@@ -11,13 +11,11 @@ let handler = async (m, { conn, args }) => {
         return;
     }
 
-    // Obtenemos el nombre de forma segura con un try/catch
     let userName = 'Usuario';
     try {
         userName = await conn.getName(user);
     } catch {}
 
-    // Si el usuario no existe en la base de datos, lo inicializamos automáticamente
     if (!db[user]) {
         db[user] = {
             exp: 0,
@@ -39,7 +37,10 @@ let handler = async (m, { conn, args }) => {
     db[user].banned = true;
     db[user].banRazon = args.slice(1).join(' ') || 'Sin razón especificada';
     
-    const nn = await conn.getName(m.sender).catch(() => 'Propietario');
+    let nn = 'Propietario';
+    try {
+        nn = await conn.getName(m.sender);
+    } catch {}
     
     await conn.reply(m.chat, `*[ ✅️ ] El usuario \`${userName}\` ha sido baneado del bot.*`, m, { mentionedJid: [user] });
     
