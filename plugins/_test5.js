@@ -135,15 +135,20 @@ async function videoToWebp(media, seconds = MAX_DURATION) {
   const tmpOut = path.join(tempFolder, randomFileName('webp'))
   try {
     fs.writeFileSync(tmpIn, media)
-    const perfiles = [[10, 50, 512], [8, 36, 512], [6, 24, 512], [5, 16, 384], [4, 10, 320]]
+    // Lienzo siempre 512x512 (si no, WhatsApp lo muestra mal). Se prioriza la fluidez:
+    // primero se baja la calidad y solo al final los fps.
+    const perfiles = seconds <= 10
+      ? [[20, 50], [20, 38], [15, 32], [15, 24], [12, 18], [10, 12]]
+      : seconds <= 25
+        ? [[15, 40], [15, 30], [12, 24], [12, 18], [10, 12], [8, 8]]
+        : [[12, 30], [12, 22], [10, 16], [8, 10], [6, 6]]
     let out = null
-    for (const [fps, q, size] of perfiles) {
-      const vf = size === 512 ? VF_BASE : VF_BASE.replace(/512/g, String(size))
+    for (const [fps, q] of perfiles) {
       await execFileAsync('ffmpeg', [
         '-y', '-i', tmpIn, '-t', String(seconds),
-        '-vf', `fps=${fps},${vf}`,
-        '-c:v', 'libwebp', '-lossless', '0', '-compression_level', '6',
-        '-q:v', String(q), '-loop', '0', '-preset', 'picture',
+        '-vf', `fps=${fps},${VF_BASE}`,
+        '-c:v', 'libwebp', '-lossless', '0', '-compression_level', '4',
+        '-q:v', String(q), '-loop', '0', '-preset', 'default',
         '-an', '-vsync', '0', tmpOut
       ], { maxBuffer: 1024 * 1024 * 20 })
       out = fs.readFileSync(tmpOut)
@@ -286,6 +291,8 @@ async function sendAudioSticker(conn, m, stickerBuffer, isAnimated, audioMessage
   if (!sticker) throw new Error('WhatsApp no aceptó la subida del sticker.')
 
   sticker.isAnimated = Boolean(isAnimated)
+  sticker.width = 512
+  sticker.height = 512
   const frame = isAnimated ? firstFrameLength(stickerBuffer) : null
   if (frame) sticker.firstFrameLength = frame
 
